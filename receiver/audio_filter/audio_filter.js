@@ -1,14 +1,3 @@
-window.AudioFilterModulesBundled=true;
-!function(o){"use strict";let t=null;o.AudioFilterModules=o.AudioFilterModules||{},o.AudioFilterModules.autoNotch={createNodes:function(o,t){const n=[];for(let e=0;e<t;e++){const t=o.createBiquadFilter();t.type="notch",t.frequency.value=0,t.Q.value=20,t.isCustomFilter=!0,n.push(t)}return n},setSharpness:function(o,t){o.forEach(function(o){o&&(o.Q.value=t)})},disable:function(o){o.forEach(function(o){o.frequency.value=0})},process:function(o,n,e,c){if(!o||!n||0===n.length)return;const r=o.frequencyBinCount;t&&t.length===r||(t=new Float32Array(r)),o.getFloatFrequencyData(t);const s=o.context.sampleRate/o.fftSize,h=null!==e.notchRange&&void 0!==e.notchRange?e.notchRange:4e3,i=null!==e.notchCenter&&void 0!==e.notchCenter?e.notchCenter:h/2,a=Math.floor(Math.max(50,i-h/2)/s),f=Math.floor((i+h/2)/s);let l=0,u=0;for(let o=a;o<f;o++)t[o]>-150&&(l+=t[o],u++);const d=u>0?l/u:-100;void 0===c.smoothedNoiseFloor&&(c.smoothedNoiseFloor=d),d>c.smoothedNoiseFloor?c.smoothedNoiseFloor=.98*c.smoothedNoiseFloor+.02*d:c.smoothedNoiseFloor=.8*c.smoothedNoiseFloor+.2*d;const g=c.smoothedNoiseFloor+4,F=[];for(let o=a+1;o<f-1;o++){const n=t[o];n>g&&n>t[o-1]&&n>t[o+1]&&F.push({freq:o*s,mag:n})}F.sort((o,t)=>t.mag-o.mag);const m=null!==e.maxNotches&&void 0!==e.maxNotches?e.maxNotches:4;n.forEach(function(o){void 0===o.notchConfidence&&(o.notchConfidence=0),void 0===o.notchLastFreq&&(o.notchLastFreq=0),void 0===o.notchLastMag&&(o.notchLastMag=-100)}),n.forEach(function(o){if(o.notchConfidence<=0)return;let t=-1,n=60;for(let e=0;e<F.length;e++){const c=Math.abs(F[e].freq-o.notchLastFreq);c<n&&(n=c,t=e)}-1!==t?(o.notchLastFreq=F[t].freq,o.notchLastMag=F[t].mag,o.notchConfidence=Math.min(o.notchConfidence+10,100),F.splice(t,1)):(o.notchConfidence-=1,o.notchLastMag=-100)});let q=n.filter(function(o){return o.notchConfidence>0});if(q.length>m)for(q.sort(function(o,t){return o.notchConfidence-t.notchConfidence});q.length>m;){const o=q.shift();o.notchConfidence=0,o.notchLastMag=-100}for(;F.length>0;){const o=F.shift(),t=n.filter(function(o){return o.notchConfidence>0});if(t.length<m){const t=n.find(function(o){return o.notchConfidence<=0});if(t){t.notchLastFreq=o.freq,t.notchLastMag=o.mag,t.notchConfidence=50;continue}}if(t.length>0){t.sort(function(o,t){return o.notchLastMag-t.notchLastMag});const n=t[0];o.mag>n.notchLastMag+6&&(n.notchLastFreq=o.freq,n.notchLastMag=o.mag,n.notchConfidence=50)}}n.forEach(function(o){if(o.notchConfidence>0){const t=o.frequency.value,n=o.notchLastFreq;o.frequency.value=t<10?n:t+.5*(n-t)}else o.frequency.value=0,o.notchLastFreq=0})}}}(window);;
-!function(e){"use strict";e.AudioFilterModules=e.AudioFilterModules||{},e.AudioFilterModules.equalizer={createNodes:function(e){const a=e.createBiquadFilter();a.type="highpass",a.frequency.value=0,a.isCustomFilter=!0;const i=e.createBiquadFilter();i.type="lowshelf",i.frequency.value=150,i.gain.value=0,i.isCustomFilter=!0;const u=e.createBiquadFilter();u.type="peaking",u.frequency.value=2e3,u.Q.value=1,u.gain.value=0,u.isCustomFilter=!0;const s=e.createBiquadFilter();s.type="highshelf",s.frequency.value=12e3,s.gain.value=0,s.isCustomFilter=!0;const n=e.createBiquadFilter();n.type="lowpass",n.frequency.value=e.sampleRate/2-100,n.isCustomFilter=!0;const l=e.createGain();return l.gain.value=1,l.isCustomFilter=!0,{highpass:a,loudness:i,peaking:u,air:s,lowpass:n,gain:l}},apply:function(e,a){e.highpass&&(e.highpass.frequency.value=a.highpass),e.lowpass&&(e.lowpass.frequency.value=a.lowpass),e.gain&&(e.gain.gain.value=a.gain),e.loudness&&(e.loudness.gain.value=a.loudnessGain),e.peaking&&(a.updatePeaking&&(e.peaking.frequency.value=a.peakingFreq,e.peaking.Q.value=a.peakingQ),e.peaking.gain.value=a.peakingGain),e.air&&(e.air.gain.value=a.airGain,e.air.frequency.value=a.airFreq)}}}(window);;
-!function(root){"use strict";function updateImpulseTiming(state,sampleRate){const interval=state.nbLastImpulse>=0?state.nbSampleCounter-state.nbLastImpulse:0;if(interval>0){if(interval<5e-4*sampleRate||interval>.05*sampleRate)state.nbPeriodEstimate=0,state.nbPeriodStableCount=0;else if(0===state.nbPeriodEstimate)state.nbPeriodEstimate=interval,state.nbPeriodStableCount=0;else{const cycles=Math.round(interval/state.nbPeriodEstimate),expectedInterval=cycles*state.nbPeriodEstimate,tolerance=Math.max(2,.08*expectedInterval);if(cycles>=1&&cycles<=4&&Math.abs(interval-expectedInterval)<=tolerance){const measuredPeriod=interval/cycles;state.nbPeriodEstimate+=.2*(measuredPeriod-state.nbPeriodEstimate),state.nbPeriodStableCount=Math.min(state.nbPeriodStableCount+1,8)}else state.nbPeriodEstimate=interval,state.nbPeriodStableCount=0}}return state.nbLastImpulse=state.nbSampleCounter,state.nbPeriodStableCount>=4}function isExpectedImpulse(state){if(state.nbPeriodStableCount<4||state.nbPeriodEstimate<=0)return!1;const elapsed=state.nbSampleCounter-state.nbLastImpulse;if(elapsed<.5*state.nbPeriodEstimate)return!1;const cycles=Math.round(elapsed/state.nbPeriodEstimate);return!(cycles<1||cycles>4)&&Math.abs(elapsed-cycles*state.nbPeriodEstimate)<=Math.max(2,.12*state.nbPeriodEstimate)}const workletSource=`\n        ${updateImpulseTiming.toString()}\n        ${isExpectedImpulse.toString()}\n        function processNoiseBlanker(processor, sample, settings, rate) {\n            const absolute = Math.abs(sample);\n            const clipped = Math.min(absolute, Math.max(processor.average * 4, 0.002));\n            processor.average = processor.average * 0.9995 + clipped * 0.0005;\n            if (processor.average < 0.0002) processor.average = 0.0002;\n            processor.nbEnvelope = processor.nbEnvelope * 0.82 + absolute * 0.18;\n            const slope = absolute - processor.nbPreviousAbs;\n            const strongImpulse = absolute > processor.average * 4 &&\n                absolute > Math.max(processor.nbEnvelope * 2.2, processor.average * 6) &&\n                slope > Math.max(processor.average * 2, 0.0004);\n            const periodicImpulse = isExpectedImpulse(processor) &&\n                absolute > processor.average * 3 &&\n                absolute > Math.max(processor.nbEnvelope * 1.5, processor.average * 4.5) &&\n                slope > Math.max(processor.average * 1.2, 0.0003);\n            const impulse = strongImpulse || periodicImpulse;\n            if (processor.blankCounter > 0) {\n                sample *= 0.08;\n                processor.blankCounter--;\n            } else if (processor.nbCooldown > 0) {\n                processor.nbCooldown--;\n            } else if (impulse) {\n                const periodLocked = updateImpulseTiming(processor, rate);\n                const blankLength = periodLocked ? Math.min(processor.nbPeriodEstimate * 0.35, rate * 0.0007) : rate * 0.00035;\n                processor.blankCounter = Math.max(4, Math.round(blankLength));\n                processor.nbCooldown = Math.max(2, Math.round(rate * 0.00015));\n                sample *= 0.08;\n            }\n            processor.nbPreviousAbs = absolute;\n            processor.nbSampleCounter++;\n            return sample;\n        }\n    `;root.AudioFilterModules=root.AudioFilterModules||{},root.AudioFilterModules.noiseBlanker={createState:function createState(){return{average:.1,envelope:0,previousAbs:0,blankCounter:0,cooldown:0,nbSampleCounter:0,nbLastImpulse:-1,nbPeriodEstimate:0,nbPeriodStableCount:0}},processSample:function processSample(state,sample,settings,sampleRate){if(!settings.nb_enabled)return sample;const absolute=Math.abs(sample),clipped=Math.min(absolute,Math.max(4*state.average,.002));state.average=.9995*state.average+5e-4*clipped,state.average<2e-4&&(state.average=2e-4),state.envelope=.82*state.envelope+.18*absolute;const strongImpulse=absolute>4*state.average&&absolute>Math.max(2.2*state.envelope,6*state.average)&&absolute-state.previousAbs>Math.max(2*state.average,4e-4),periodicImpulse=isExpectedImpulse(state)&&absolute>3*state.average&&absolute>Math.max(1.5*state.envelope,4.5*state.average)&&absolute-state.previousAbs>Math.max(1.2*state.average,3e-4),impulse=strongImpulse||periodicImpulse;if(state.blankCounter>0)sample*=.08,state.blankCounter--;else if(state.cooldown>0)state.cooldown--;else if(settings.nb_enabled&&impulse){const blankLength=updateImpulseTiming(state,sampleRate)?Math.min(.35*state.nbPeriodEstimate,7e-4*sampleRate):35e-5*sampleRate;state.blankCounter=Math.max(4,Math.round(blankLength)),state.cooldown=Math.max(2,Math.round(15e-5*sampleRate)),sample*=.08}return state.previousAbs=absolute,state.nbSampleCounter++,sample},workletSource:workletSource}}(window);;
-!function(e){"use strict";e.AudioFilterModules=e.AudioFilterModules||{},e.AudioFilterModules.humFilter={createNodes:function(e){return Array.from({length:6},function(){const t=e.createBiquadFilter();return t.type="notch",t.frequency.value=0,t.Q.value=28,t.isCustomFilter=!0,t})},apply:function(e,t,u,n,o){const r=o/2;e.forEach(function(e,o){const i=u*(o+1);e.frequency.value=t&&o<n&&i<r-10?i:0})},maxHarmonics:6}}(window);;
-!function(e){"use strict";e.AudioFilterModules=e.AudioFilterModules||{},e.AudioFilterModules.compressor={createState:function(){return{envelope:0,gain:1,hang:0}},processSample:function(e,o,t,n){if(!t.comp_enabled)return o;const a=Math.abs(o),r=Math.exp(-1/(.05*n));a>e.envelope?e.envelope=a:e.envelope=e.envelope*r+a*(1-r);const s=Math.max(t.gateThresh||.0025,1e-6);let c=(t.agcTarget||.5)/(e.envelope+1e-6);if(c=Math.min(c,t.maxBoost||20),e.envelope<s&&(c*=Math.pow(e.envelope/s,1.3)),c<e.gain)e.gain=c,e.hang=Math.floor((t.hangTime||.2)*n);else if(e.hang>0)e.hang--;else{const o=Math.max(t.recoveryTime||.5,.001),a=Math.exp(-1/(o*n));e.gain=e.gain*a+c*(1-a)}return Math.tanh(o*e.gain)*(t.compGain||.1)},workletSource:"\n        function processCompressor(processor, sample, settings, rate) {\n            const absolute = Math.abs(sample);\n            if (absolute > processor.envelope) processor.envelope = absolute;\n            else {\n                const decay = Math.exp(-1 / (0.05 * rate));\n                processor.envelope = processor.envelope * decay + absolute * (1 - decay);\n            }\n            const gate = Math.max(settings.gateThresh || 0.0025, 0.000001);\n            let target = (settings.agcTarget || 0.5) / (processor.envelope + 0.000001);\n            target = Math.min(target, settings.maxBoost || 20);\n            if (processor.envelope < gate) target *= Math.pow(processor.envelope / gate, 1.3);\n            if (target < processor.gain) {\n                processor.gain = target;\n                processor.hang = Math.floor((settings.hangTime || 0.2) * rate);\n            } else if (processor.hang > 0) processor.hang--;\n            else {\n                const recovery = Math.max(settings.recoveryTime || 0.5, 0.001);\n                const recoveryFactor = Math.exp(-1 / (recovery * rate));\n                processor.gain = processor.gain * recoveryFactor + target * (1 - recoveryFactor);\n            }\n            return Math.tanh(sample * processor.gain) * (settings.compGain || 0.1);\n        }\n    "}}(window);;
-!function(o){"use strict";o.AudioFilterModules=o.AudioFilterModules||{},o.AudioFilterModules.noiseReduction={createScriptProcessor:function(o,e){const n=e.fftSize,r=e.fftWindow,s=e.performFFT,t=e.getSettings,a=o.createScriptProcessor(4096,1,1);a.isCustomFilter=!0;const c=n/2,i=4096,l=new Float32Array(n),p=new Float32Array(n),k=new Float32Array(n/2+1).fill(0),f=new Float32Array(n/2+1).fill(1),u=new Float32Array(n/2+1),d=new Float32Array(i+n),h=new Float32Array(i+n);let F=!1,g=!1;const m=function(){F=!1,k.fill(1e-9),f.fill(1),d.fill(0),h.fill(0)};return a.resetSpectralState=m,a.onaudioprocess=function(e){const a=e.inputBuffer.getChannelData(0),I=e.outputBuffer.getChannelData(0),S=t(),M=!(!S||!S.enabled);if(M&&!g&&m(),g=M,d.copyWithin(0,i,i+n),d.set(a,n),h.copyWithin(0,i,i+n),h.fill(0,n),!M)return void I.set(a);const b=S.alpha,w=Math.pow(10,S.snr/20),T=Math.pow(10,S.gain/20),_=void 0===S.comb?.5:S.comb,E=!!S.speech_mode,Z=1+.01*(1-(E&&b>.98?.95:b));let R=!0;for(let o=0;o<a.length;o++)if(Math.abs(a[o])>5e-4){R=!1;break}for(let e=0;e<i/c;e++){const t=e*c+n-c;for(let o=0;o<n;o++)l[o]=d[t+o]*r[o];p.fill(0),s(l,p,!1);for(let o=0;o<=n/2;o++){const e=Math.sqrt(l[o]*l[o]+p[o]*p[o]);if(u[o]=e,!R){const n=E&&e<.5*k[o]?.9:b;e<k[o]?k[o]=n*k[o]+(1-n)*e:k[o]=k[o]*Z+1e-6,k[o]=Math.max(k[o],1e-9)}}if(!F&&!R){for(let o=0;o<=n/2;o++)k[o]=Math.max(u[o],1e-6);F=!0}for(let e=0;e<=n/2;e++){const r=u[e],s=e*o.sampleRate/n;let t=w;const a=e>1&&e<n/2-1&&r>=u[e-1]&&r>=u[e+1];t*=s>100&&s<9e3?a?1-.95*_:1+.9*_:1.2;const c=r/(k[e]+1e-6);let i=c<t?Math.pow(c/t,2):1;i=Math.max(i,.005),f[e]=i>f[e]?.4*f[e]+.6*i:.95*f[e]+.05*i,l[e]*=f[e],p[e]*=f[e],e>0&&e<n/2&&(l[n-e]*=f[e],p[n-e]*=f[e])}s(l,p,!0);for(let o=0;o<n;o++)h[t+o]+=l[o]*r[o]}for(let o=0;o<i;o++)I[o]=h[o]*T},a},workletSource:"\n        function processNoiseReductionBlock(processor, block, workletFft, FFT_SIZE, HOP_SIZE, fftWindow, sampleRate) {\n            const settings = processor.settings;\n            processor.nrInput.copyWithin(0, 4096, 4096 + FFT_SIZE);\n            processor.nrInput.set(block, FFT_SIZE);\n            processor.nrOutput.copyWithin(0, 4096, 4096 + FFT_SIZE);\n            processor.nrOutput.fill(0, FFT_SIZE);\n            const alpha = settings.alpha;\n            const threshold = Math.pow(10, settings.snr / 20);\n            const outputGain = Math.pow(10, settings.gain / 20);\n            const comb = settings.comb === undefined ? 0.5 : settings.comb;\n            const speechMode = !!settings.speech_mode;\n            const noiseRise = 1 + (1 - (speechMode && alpha > 0.98 ? 0.95 : alpha)) * 0.01;\n            let blockSilent = true;\n            for (let i = 0; i < block.length; i++) {\n                if (Math.abs(block[i]) > 0.0005) { blockSilent = false; break; }\n            }\n            for (let blockIndex = 0; blockIndex < 8; blockIndex++) {\n                const position = blockIndex * HOP_SIZE + FFT_SIZE - HOP_SIZE;\n                for (let k = 0; k < FFT_SIZE; k++) processor.nrReal[k] = processor.nrInput[position + k] * fftWindow[k];\n                processor.nrImag.fill(0);\n                workletFft(processor.nrReal, processor.nrImag, false);\n                for (let k = 0; k <= FFT_SIZE / 2; k++) {\n                    const magnitude = Math.sqrt(processor.nrReal[k] * processor.nrReal[k] + processor.nrImag[k] * processor.nrImag[k]);\n                    processor.nrMagnitude[k] = magnitude;\n                    if (!blockSilent) {\n                        const currentAlpha = speechMode && magnitude < processor.nrNoise[k] * 0.5 ? 0.90 : alpha;\n                        if (magnitude < processor.nrNoise[k]) processor.nrNoise[k] = currentAlpha * processor.nrNoise[k] + (1 - currentAlpha) * magnitude;\n                        else processor.nrNoise[k] = processor.nrNoise[k] * noiseRise + 1e-6;\n                        processor.nrNoise[k] = Math.max(processor.nrNoise[k], 1e-9);\n                    }\n                }\n                if (!processor.nrInitialized && !blockSilent) {\n                    for (let k = 0; k <= FFT_SIZE / 2; k++) processor.nrNoise[k] = Math.max(processor.nrMagnitude[k], 1e-6);\n                    processor.nrInitialized = true;\n                }\n                for (let k = 0; k <= FFT_SIZE / 2; k++) {\n                    const magnitude = processor.nrMagnitude[k];\n                    const frequency = k * sampleRate / FFT_SIZE;\n                    let localThreshold = threshold;\n                    const peak = k > 1 && k < FFT_SIZE / 2 - 1 && magnitude >= processor.nrMagnitude[k - 1] && magnitude >= processor.nrMagnitude[k + 1];\n                    if (frequency > 100 && frequency < 9000) localThreshold *= peak ? 1 - 0.95 * comb : 1 + 0.9 * comb;\n                    else localThreshold *= 1.2;\n                    const snr = magnitude / (processor.nrNoise[k] + 0.000001);\n                    const gain = Math.max(snr < localThreshold ? Math.pow(snr / localThreshold, 2) : 1, 0.005);\n                    processor.nrLastGain[k] = gain > processor.nrLastGain[k] ? processor.nrLastGain[k] * 0.4 + gain * 0.6 : processor.nrLastGain[k] * 0.95 + gain * 0.05;\n                    processor.nrReal[k] *= processor.nrLastGain[k];\n                    processor.nrImag[k] *= processor.nrLastGain[k];\n                    if (k > 0 && k < FFT_SIZE / 2) {\n                        processor.nrReal[FFT_SIZE - k] *= processor.nrLastGain[k];\n                        processor.nrImag[FFT_SIZE - k] *= processor.nrLastGain[k];\n                    }\n                }\n                workletFft(processor.nrReal, processor.nrImag, true);\n                for (let k = 0; k < FFT_SIZE; k++) processor.nrOutput[position + k] += processor.nrReal[k] * fftWindow[k];\n            }\n            for (let k = 0; k < 4096; k++) processor.nrReady[processor.nrReadyLength + k] = processor.nrOutput[k] * outputGain;\n            processor.nrReadyLength += 4096;\n        }\n    "}}(window);;
-!function(root){"use strict";function processSpeechExpanderSample(state,sample,settings,sampleRate){const absolute=Math.abs(sample),envelopeTime=absolute>state.envelope?.008:.09,envelopeCoefficient=Math.exp(-1/(envelopeTime*sampleRate));if(state.envelope=state.envelope*envelopeCoefficient+absolute*(1-envelopeCoefficient),!settings.expander_enabled)return state.gain=1,sample;const threshold=Math.pow(10,settings.expanderThresholdDb/20),floor=Math.pow(10,settings.expanderFloorDb/20),ratio=Math.max(1,settings.expanderRatio||2),target=state.envelope<threshold?Math.max(floor,Math.pow(state.envelope/threshold,ratio-1)):1,gainTime=target<state.gain?.012:.075,gainCoefficient=Math.exp(-1/(gainTime*sampleRate));return state.gain=state.gain*gainCoefficient+target*(1-gainCoefficient),sample*state.gain}root.AudioFilterModules=root.AudioFilterModules||{},root.AudioFilterModules.speechExpander={createState:function createState(){return{envelope:0,gain:1}},processSample:processSpeechExpanderSample,workletSource:processSpeechExpanderSample.toString()}}(window);;
-!function(root){"use strict";function processOutputLimiterSample(state,sample,settings,sampleRate){const absolute=Math.abs(sample);if(absolute>state.envelope)state.envelope=absolute;else{const envelopeCoefficient=Math.exp(-1/(.08*sampleRate));state.envelope=state.envelope*envelopeCoefficient+absolute*(1-envelopeCoefficient)}if(!settings.limiter_enabled)return state.gain=1,sample;const ceiling=Math.pow(10,settings.limiterCeilingDb/20),target=state.envelope>ceiling?ceiling/state.envelope:1;if(target<state.gain)state.gain=target;else{const releaseCoefficient=Math.exp(-1/(.08*sampleRate));state.gain=state.gain*releaseCoefficient+target*(1-releaseCoefficient)}return sample*state.gain}root.AudioFilterModules=root.AudioFilterModules||{},root.AudioFilterModules.outputLimiter={createState:function createState(){return{envelope:0,gain:1}},processSample:processOutputLimiterSample,workletSource:processOutputLimiterSample.toString()}}(window);;
-!function(e){"use strict";e.AudioFilterModules=e.AudioFilterModules||{},e.AudioFilterModules.aiEnhancement={createRnnoiseWorkerController:function(){let e=null,n=1;const t=new Map;function r(r,a){return new Promise(function(o,s){const i=function(){if(e)return e;const n=URL.createObjectURL(new Blob(["\n                'use strict';\n                let rn = null;\n                const RNNOISE_FRAME = 480;\n                self.onmessage = async function (event) {\n                    const data = event.data;\n                    try {\n                        if (data.type === 'init-rnnoise') {\n                            const module = await import(data.basePath + 'rnnoise-sync.js');\n                            const Module = module.default();\n                            const statePtr = Module._rnnoise_create(0);\n                            rn = {\n                                module: Module,\n                                statePtr,\n                                inPtr: Module._malloc(RNNOISE_FRAME * 4),\n                                outPtr: Module._malloc(RNNOISE_FRAME * 4)\n                            };\n                            self.postMessage({ type: 'ready', id: data.id });\n                        } else if (data.type === 'process-rnnoise') {\n                            const heap = rn.module.HEAPF32;\n                            const inBase = rn.inPtr / 4;\n                            const outBase = rn.outPtr / 4;\n                            const frame = data.frame;\n                            if (frame.length !== RNNOISE_FRAME) {\n                                throw new RangeError('RNNoise requires exactly ' + RNNOISE_FRAME + ' samples per frame');\n                            }\n                            for (let i = 0; i < frame.length; i++) heap[inBase + i] = frame[i] * 32768;\n                            const vadProbability = rn.module._rnnoise_process_frame(rn.statePtr, rn.outPtr, rn.inPtr);\n                            const output = new Float32Array(frame.length);\n                            for (let i = 0; i < frame.length; i++) output[i] = heap[outBase + i] / 32768;\n                            self.postMessage({ type: 'result', id: data.id, frame: output, vadProbability: vadProbability }, [output.buffer]);\n                        }\n                    } catch (error) {\n                        self.postMessage({ type: 'error', id: data.id, message: (error && error.message) || String(error) });\n                    }\n                };\n            "],{type:"application/javascript"}));return e=new Worker(n),e.onmessage=function(e){const n=e.data,r=t.get(n.id);r&&(t.delete(n.id),"error"===n.type?r.reject(new Error(n.message)):r.resolve(n))},e.onerror=function(e){console.error("[audio_filter] AI worker error:",e.message||e)},e}(),l=n++;t.set(l,{resolve:o,reject:s}),i.postMessage(Object.assign({id:l},r),a||[])})}return{request:r,processHop:async function(e,n){let t=0;for(let e=0;e<n.length;e++)t=Math.max(t,Math.abs(n[e]));t>e.aiEnvelope?e.aiEnvelope=.6*e.aiEnvelope+.4*t:e.aiEnvelope=.85*e.aiEnvelope+.15*t,e.aiEnvelope=Math.max(e.aiEnvelope,5e-4),e.rnVadProbability>=.3?e.rnVadHangFrames=1:e.rnVadHangFrames=Math.max(0,(e.rnVadHangFrames||0)-1);let a=e.rnVadHangFrames>0?e.rnTarget/e.aiEnvelope:1;a=Math.max(1,Math.min(a,e.rnMaxBoost));const o=e.aiLastGain,s=new Float32Array(n.length);for(let e=0;e<n.length;e++)s[e]=n[e]*(o+(a-o)*(e/n.length));e.aiLastGain=a;const i=await r({type:"process-rnnoise",frame:s},[s.buffer]),l=i.frame;e.rnVadProbability=Number.isFinite(i.vadProbability)?i.vadProbability:0;const u=e.rnDry.splice(0,n.length);for(;u.length<n.length;)u.push(0);for(let t=0;t<n.length;t++)e.rnDry.push(n[t]);const c=new Float32Array(l.length);for(let t=0;t<l.length;t++){const r=o+(a-o)*(t/n.length);c[t]=l[t]/r*e.rnWetMix+u[t]*(1-e.rnWetMix)}return c}}}}}(window);;
-!function(t){"use strict";t.AudioFilterModules=t.AudioFilterModules||{},t.AudioFilterModules.dtln={processHop:async function(t,o,a){const e=a.blockSize,n=a.hopSize,i=a.real,s=a.imag,l=a.magnitude,r=a.phase,u=a.fft,f=a.ort;t.winBuf.copyWithin(0,n,e);for(let a=0;a<n;a++)t.winBuf[e-n+a]=o[a];i.set(t.winBuf),s.fill(0),u(i,s,!1);for(let t=0;t<=e/2;t++)l[t]=Math.sqrt(i[t]*i[t]+s[t]*s[t]),r[t]=Math.atan2(s[t],i[t]);const c=await t.session1.run({input_2:new f.Tensor("float32",l,[1,1,e/2+1]),input_3:new f.Tensor("float32",t.state1,[1,2,128,2])}),d=c.activation_2.data;t.state1=Float32Array.from(c.tf_op_layer_stack_2.data);for(let o=0;o<=e/2;o++){const a=l[o]*Math.max(d[o],t.maskFloor);i[o]=a*Math.cos(r[o]),s[o]=a*Math.sin(r[o]),o>0&&o<e/2&&(i[e-o]=i[o],s[e-o]=-s[o])}u(i,s,!0);const p=await t.session2.run({input_4:new f.Tensor("float32",i.slice(0,e),[1,1,e]),input_5:new f.Tensor("float32",t.state2,[1,2,128,2])}),_=p.conv1d_3.data;t.state2=Float32Array.from(p.tf_op_layer_stack_5.data),t.outBuf.copyWithin(0,n,e),t.outBuf.fill(0,e-n);for(let o=0;o<e;o++)t.outBuf[o]+=_[o];const w=t.dryDelay.splice(0,n);for(let a=0;a<n;a++)t.dryDelay.push(o[a]);for(let o=0;o<n;o++)t.pendingOut16k.push(t.outBuf[o]*t.wetMix+w[o]*(1-t.wetMix))}}}(window);;
 /**
  * audio_filter.js
  * A plugin concept for OpenWebRX+ to improve audio quality (SSB, AM & Digital).
@@ -17,4 +6,3343 @@ window.AudioFilterModulesBundled=true;
  * License: MIT
  * Copyright (c) 2025 DL1HQH
  */
-!function(){"use strict";const e="audio_filter",n={ssb:{highpassFreq:null,lowpassFreq:13500,peakingFreq:521.8739192045387,peakingQ:.5,peakingGain:12.87,gain:.9,agcTarget:.5,maxBoost:35,notchQ:30,maxNotches:4,compHPF:325,compLPF:1475,nr_gain:5,nr_alpha:.95,nr_snr:24,nr_comb:0,nr_speech_mode:!0,airGain:9,airFreq:1475},am:{highpassFreq:219,lowpassFreq:13500,peakingFreq:675.6313495618042,peakingQ:.5,peakingGain:18.48,gain:.9,agcTarget:.5,maxBoost:19,notchQ:30,maxNotches:4,compHPF:175,compLPF:1325,nr_gain:10,nr_alpha:.9723,nr_snr:26,nr_comb:.1,nr_speech_mode:!1,airFreq:1325},cw:{highpassFreq:300,lowpassFreq:900,peakingFreq:600,peakingQ:3,peakingGain:3.3,gain:.9,agcTarget:.4,maxBoost:20,notchQ:40,maxNotches:4,compHPF:400,compLPF:1500,nr_gain:0,nr_alpha:.98,nr_snr:30,nr_comb:.5,nr_speech_mode:!1,airFreq:1500},nfm:{highpassFreq:50,lowpassFreq:11100,peakingFreq:2500,peakingQ:.7,peakingGain:3.3,gain:.9,agcTarget:.5,maxBoost:20,notchQ:30,maxNotches:4,compHPF:250,compLPF:5e3,nr_gain:0,nr_alpha:.98,nr_snr:30,nr_comb:.5,nr_speech_mode:!0,airFreq:5e3},wfm:{highpassFreq:50,lowpassFreq:11100,peakingFreq:8e3,peakingQ:.5,peakingGain:3.3,gain:.9,agcTarget:.5,maxBoost:6,notchQ:30,maxNotches:4,compHPF:100,compLPF:8e3,nr_gain:0,nr_alpha:.95,nr_snr:10,nr_comb:.5,nr_speech_mode:!1,airFreq:8e3},digital:{highpassFreq:50,lowpassFreq:11100,peakingFreq:2500,peakingQ:.7,peakingGain:3.3,gain:.9,agcTarget:.5,maxBoost:20,notchQ:30,maxNotches:4,compHPF:50,compLPF:8e3,nr_gain:0,nr_alpha:.95,nr_snr:10,nr_comb:.5,nr_speech_mode:!1,airFreq:8e3}};let t={highpass:null,lowpass:null,nbProcessor:null,nrProcessor:null,compProcessor:null,expanderProcessor:null,limiterProcessor:null,loudness:null,air:null,compHighpass:null,compLowpass:null,peaking:null,gain:null,analyser:null,outputAnalyser:null,notches:[],humFilters:[]},o=null,i="",r=!1,a=!1,l=!1,s=!1,c=!1,u=!1,d=!1,p=!1,h=!1,m=!1,g="false"!==localStorage.getItem("openwebrx-audio-filter-show-in-spec"),f="false"!==localStorage.getItem("openwebrx-audio-filter-show-out-spec"),x=!1;const b=["highpassFreq","lowpassFreq","peakingGain","peakingFreq","peakingQ","gain","agcTarget","maxBoost","gateThresh","hangTime","recoveryTime","compGain","notchQ","maxNotches","notchRange","notchCenter","compHPF","compLPF","airGain","airFreq","nr_gain","nr_alpha","nr_snr","nr_comb","nr_speech_mode","dtln_gain","dtln_floor","dtln_presence","dtln_mix","rn_target","rn_boost","rn_mix","humFrequency","humHarmonics","expanderThresholdDb","expanderFloorDb","expanderRatio","limiterCeilingDb"];function y(){return b.reduce((e,n)=>(e[n]=null,e),{})}let v=y(),w={ssb:y(),am:y(),cw:y(),nfm:y(),wfm:y(),digital:y()};function F(e){return e?"am"===(e=String(e).toLowerCase())?"am":"cw"===e?"cw":"nfm"===e||"fm"===e?"nfm":"wfm"===e?"wfm":["dmr","ysf","dstar","nxdn","m17","p25","freedv"].includes(e)?"digital":"ssb":"ssb"}function k(){let e=F(i);w[e]=JSON.parse(JSON.stringify(v)),localStorage.setItem("openwebrx-audio-filter-settings",JSON.stringify(w))}const C=AudioNode.prototype.connect;AudioNode.prototype.connect=function(e,n,o){if(e&&e.context&&e===e.context.destination){let i=e.context;if(t.highpass&&t.highpass.context===i||function(e){const n=e.createAnalyser();n.fftSize=4096,n.smoothingTimeConstant=.15,n.minDecibels=-140,n.maxDecibels=-10,t.analyser=n;const o=e.createAnalyser();o.fftSize=4096,o.smoothingTimeConstant=.15,o.minDecibels=-140,o.maxDecibels=-10,t.outputAnalyser=o,t.notches=window.AudioFilterModules.autoNotch.createNodes(e,4),t.humFilters=window.AudioFilterModules.humFilter.createNodes(e);const i=e.createBiquadFilter();i.type="highpass",i.frequency.value=0,i.isCustomFilter=!0,t.compHighpass=i;const r=e.createBiquadFilter();r.type="lowpass",r.frequency.value=e.sampleRate/2-100,r.isCustomFilter=!0,t.compLowpass=r;const a=e.createGain();a.isCustomFilter=!0,t.nbProcessor=a,t.inputProxy=e.createGain(),t.inputProxy.isCustomFilter=!0;const s=e.createGain();s.isCustomFilter=!0,t.dtlnProcessor=s,X.ctxRate=e.sampleRate,X.inRing=new Float32Array(R),X.outRing=new Float32Array(R),Y(),X.pumpTimer||(X.pumpTimer=setTimeout(ae,4));const c=e.createGain();c.isCustomFilter=!0,t.nrProcessor=c,t.reset_nr=function(){t.nrProcessor.resetSpectralState?t.nrProcessor.resetSpectralState():t.nrProcessor.port&&(t.nrProcessor.port.postMessage({type:"reset"}),t.nrProcessor.port.postMessage({type:"settings",value:t.nrSettings||{}}))};const u=e.createGain();u.isCustomFilter=!0,t.compProcessor=u;const d=e.createGain();d.isCustomFilter=!0,t.expanderProcessor=d;const p=e.createGain();p.isCustomFilter=!0,t.limiterProcessor=p,Object.assign(t,window.AudioFilterModules.equalizer.createNodes(e));t.highpass,t.loudness,t.peaking,t.air,t.lowpass,t.gain;ce(e),Fe(),t.workletFallback=function(){if(!t.workletActive)return;t.workletActive=!1,[t.dtlnProcessor,t.nbProcessor,t.nrProcessor,t.compProcessor,t.expanderProcessor,t.limiterProcessor].forEach(function(e){try{e.disconnect()}catch(e){}});const n=se(e);t.dtlnProcessor=n,t.nbProcessor=a,t.nrProcessor=c,t.compProcessor=u,ce(e),Fe()},function(){return"undefined"!=typeof window&&void 0!==window.isSecureContext?window.isSecureContext:"undefined"!=typeof location&&("https:"===location.protocol||"localhost"===location.hostname||"127.0.0.1"===location.hostname||"::1"===location.hostname)}()?function(e){if(!e.audioWorklet||"undefined"==typeof AudioWorkletNode)return Promise.reject(new Error("AudioWorklet is unavailable"));const n=`\n            const FFT_SIZE = 1024;\n            const HOP_SIZE = FFT_SIZE / 2;\n            const fftBitRev = new Uint16Array(FFT_SIZE);\n            const fftCos = new Float32Array(FFT_SIZE / 2);\n            const fftSin = new Float32Array(FFT_SIZE / 2);\n            const fftWindow = new Float32Array(FFT_SIZE);\n            for (let i = 0; i < FFT_SIZE; i++) {\n                let j = 0;\n                let value = i;\n                for (let bit = 0; bit < 10; bit++) {\n                    j = (j << 1) | (value & 1);\n                    value >>= 1;\n                }\n                fftBitRev[i] = j;\n                fftWindow[i] = Math.sin(Math.PI * i / FFT_SIZE);\n            }\n            for (let i = 0; i < FFT_SIZE / 2; i++) {\n                const angle = -2 * Math.PI * i / FFT_SIZE;\n                fftCos[i] = Math.cos(angle);\n                fftSin[i] = Math.sin(angle);\n            }\n            function workletFft(real, imag, inverse) {\n                for (let i = 0; i < FFT_SIZE; i++) {\n                    const j = fftBitRev[i];\n                    if (i < j) {\n                        let temp = real[i]; real[i] = real[j]; real[j] = temp;\n                        temp = imag[i]; imag[i] = imag[j]; imag[j] = temp;\n                    }\n                }\n                for (let half = 1; half < FFT_SIZE; half <<= 1) {\n                    const step = FFT_SIZE / (half << 1);\n                    for (let start = 0; start < FFT_SIZE; start += half << 1) {\n                        for (let k = 0, table = 0; k < half; k++, table += step) {\n                            const sine = inverse ? -fftSin[table] : fftSin[table];\n                            const index = start + k + half;\n                            const tr = fftCos[table] * real[index] - sine * imag[index];\n                            const ti = fftCos[table] * imag[index] + sine * real[index];\n                            real[index] = real[start + k] - tr;\n                            imag[index] = imag[start + k] - ti;\n                            real[start + k] += tr;\n                            imag[start + k] += ti;\n                        }\n                    }\n                }\n                if (inverse) {\n                    for (let i = 0; i < FFT_SIZE; i++) {\n                        real[i] /= FFT_SIZE;\n                        imag[i] /= FFT_SIZE;\n                    }\n                }\n            }\n            ${window.AudioFilterModules.noiseBlanker.workletSource}\n            ${window.AudioFilterModules.compressor.workletSource}\n            ${window.AudioFilterModules.noiseReduction.workletSource}\n            ${window.AudioFilterModules.speechExpander.workletSource}\n            ${window.AudioFilterModules.outputLimiter.workletSource}\n            class AudioFilterProcessor extends AudioWorkletProcessor {\n                constructor(options) {\n                    super();\n                    this.stage = options.processorOptions.stage;\n                    this.settings = {};\n                    this.average = 0.1;\n                    this.blankCounter = 0;\n                    this.nbEnvelope = 0;\n                    this.nbPreviousAbs = 0;\n                    this.nbCooldown = 0;\n                    this.nbSampleCounter = 0;\n                    this.nbLastImpulse = -1;\n                    this.nbPeriodEstimate = 0;\n                    this.nbPeriodStableCount = 0;\n                    this.envelope = 0;\n                    this.gain = 1;\n                    this.hang = 0;\n                    this.noise = 0.001;\n                    this.silentFrames = 0;\n                    this.warmupSamples = 0;\n                    this.nrInput = new Float32Array(4096 + FFT_SIZE);\n                    this.nrOutput = new Float32Array(4096 + FFT_SIZE);\n                    this.nrReal = new Float32Array(FFT_SIZE);\n                    this.nrImag = new Float32Array(FFT_SIZE);\n                    this.nrNoise = new Float32Array(FFT_SIZE / 2 + 1);\n                    this.nrLastGain = new Float32Array(FFT_SIZE / 2 + 1).fill(1);\n                    this.nrMagnitude = new Float32Array(FFT_SIZE / 2 + 1);\n                    this.nrInitialized = false;\n                    this.nrPending = new Float32Array(4096);\n                    this.nrPendingLength = 0;\n                    this.nrReady = new Float32Array(8192);\n                    this.nrReadyLength = 0;\n                    this.expanderState = { envelope: 0, gain: 1 };\n                    this.limiterState = { envelope: 0, gain: 1 };\n                    this.port.onmessage = event => {\n                        if (event.data.type === 'reset') {\n                            this.average = 0.1;\n                            this.blankCounter = 0;\n                            this.nbEnvelope = 0;\n                            this.nbPreviousAbs = 0;\n                            this.nbCooldown = 0;\n                            this.nbSampleCounter = 0;\n                            this.nbLastImpulse = -1;\n                            this.nbPeriodEstimate = 0;\n                            this.nbPeriodStableCount = 0;\n                            this.envelope = 0;\n                            this.gain = 1;\n                            this.hang = 0;\n                            this.noise = 0.001;\n                            this.silentFrames = 0;\n                            this.warmupSamples = 2048;\n                            this.nrInput.fill(0);\n                            this.nrOutput.fill(0);\n                            this.nrNoise.fill(1e-9);\n                            this.nrLastGain.fill(1);\n                            this.nrInitialized = false;\n                            this.nrPending.fill(0);\n                            this.nrPendingLength = 0;\n                            this.nrReady.fill(0);\n                            this.nrReadyLength = 0;\n                            this.expanderState = { envelope: 0, gain: 1 };\n                            this.limiterState = { envelope: 0, gain: 1 };\n                        } else if (event.data.type === 'settings') {\n                            this.settings = event.data.value || {};\n                        }\n                    };\n                }\n                processSpectralBlock(block) {\n                    processNoiseReductionBlock(this, block, workletFft, FFT_SIZE, HOP_SIZE, fftWindow, sampleRate);\n                }\n                process(inputs, outputs) {\n                    const input = inputs[0] && inputs[0][0];\n                    const output = outputs[0] && outputs[0][0];\n                    if (!input || !output) return true;\n                    const settings = this.settings;\n                    let blockPeak = 0;\n                    for (let i = 0; i < input.length; i++) blockPeak = Math.max(blockPeak, Math.abs(input[i]));\n                    if (this.stage === 'nr') {\n                        if (!settings.enabled) {\n                            output.set(input);\n                            return true;\n                        }\n                        for (let i = 0; i < input.length; i++) this.nrPending[this.nrPendingLength + i] = input[i];\n                        this.nrPendingLength += input.length;\n                        while (this.nrPendingLength >= 4096) {\n                            this.processSpectralBlock(this.nrPending.slice(0, 4096));\n                            this.nrPending.copyWithin(0, 4096, this.nrPendingLength);\n                            this.nrPendingLength -= 4096;\n                        }\n                        if (this.nrReadyLength >= input.length) {\n                            output.set(this.nrReady.subarray(0, input.length));\n                            this.nrReady.copyWithin(0, input.length, this.nrReadyLength);\n                            this.nrReadyLength -= input.length;\n                        } else {\n                            output.fill(0);\n                        }\n                        return true;\n                    }\n                    if (this.stage === 'nr') {\n                        if (blockPeak < 0.00001) this.silentFrames++;\n                        else if (this.silentFrames > 20) {\n                            this.noise = Math.max(0.001, blockPeak * 0.1);\n                            this.warmupSamples = 2048;\n                            this.silentFrames = 0;\n                        } else this.silentFrames = 0;\n                    }\n                    for (let i = 0; i < input.length; i++) {\n                        let sample = input[i];\n                        if (this.stage === 'nb' && settings.nb_enabled) {\n                            sample = processNoiseBlanker(this, sample, settings, sampleRate);\n                        } else if (this.stage === 'nr') {\n                            // NR is processed as a spectral block below, not per sample.\n                        } else if (this.stage === 'comp' && settings.comp_enabled) {\n                            sample = processCompressor(this, sample, settings, sampleRate);\n                        } else if (this.stage === 'expander') {\n                            sample = processSpeechExpanderSample(this.expanderState, sample, settings, sampleRate);\n                        } else if (this.stage === 'limiter') {\n                            sample = processOutputLimiterSample(this.limiterState, sample, settings, sampleRate);\n                        }\n                        output[i] = sample;\n                    }\n                    if (this.stage === 'nr') {\n                        if (!settings.enabled) {\n                            output.set(input);\n                            return true;\n                        }\n                        const bufferSize = input.length;\n                        this.nrInput.copyWithin(0, bufferSize, bufferSize + FFT_SIZE);\n                        this.nrInput.set(input, FFT_SIZE);\n                        this.nrOutput.copyWithin(0, bufferSize, bufferSize + FFT_SIZE);\n                        this.nrOutput.fill(0, FFT_SIZE);\n                        const alpha = settings.alpha;\n                        const threshold = Math.pow(10, settings.snr / 20);\n                        const outputGain = Math.pow(10, settings.gain / 20);\n                        const comb = settings.comb === undefined ? 0.5 : settings.comb;\n                        const speechMode = !!settings.speech_mode;\n                        const noiseRise = 1 + (1 - (speechMode && alpha > 0.98 ? 0.95 : alpha)) * 0.01;\n                        for (let block = 0; block < bufferSize / HOP_SIZE; block++) {\n                            const position = block * HOP_SIZE + FFT_SIZE - HOP_SIZE;\n                            for (let k = 0; k < FFT_SIZE; k++) this.nrReal[k] = this.nrInput[position + k] * fftWindow[k];\n                            this.nrImag.fill(0);\n                            workletFft(this.nrReal, this.nrImag, false);\n                            for (let k = 0; k <= FFT_SIZE / 2; k++) {\n                                const magnitude = Math.sqrt(this.nrReal[k] * this.nrReal[k] + this.nrImag[k] * this.nrImag[k]);\n                                this.nrMagnitude[k] = magnitude;\n                                const currentAlpha = speechMode && magnitude < this.nrNoise[k] * 0.5 ? 0.90 : alpha;\n                                if (magnitude < this.nrNoise[k]) this.nrNoise[k] = currentAlpha * this.nrNoise[k] + (1 - currentAlpha) * magnitude;\n                                else this.nrNoise[k] = this.nrNoise[k] * noiseRise + 1e-6;\n                                this.nrNoise[k] = Math.max(this.nrNoise[k], 1e-9);\n                            }\n                            if (!this.nrInitialized) {\n                                for (let k = 0; k <= FFT_SIZE / 2; k++) this.nrNoise[k] = Math.max(this.nrMagnitude[k], 1e-6);\n                                this.nrInitialized = true;\n                            }\n                            for (let k = 0; k <= FFT_SIZE / 2; k++) {\n                                const frequency = k * sampleRate / FFT_SIZE;\n                                let localThreshold = threshold;\n                                const magnitude = this.nrMagnitude[k];\n                                const peak = k > 1 && k < FFT_SIZE / 2 - 1 && magnitude >= this.nrMagnitude[k - 1] && magnitude >= this.nrMagnitude[k + 1];\n                                if (frequency > 100 && frequency < 9000) localThreshold *= peak ? 1 - 0.95 * comb : 1 + 0.9 * comb;\n                                else localThreshold *= 1.2;\n                                const snr = magnitude / (this.nrNoise[k] + 0.000001);\n                                let gain = snr < localThreshold ? Math.pow(snr / localThreshold, 2) : 1;\n                                gain = Math.max(gain, 0.005);\n                                this.nrLastGain[k] = gain > this.nrLastGain[k] ? this.nrLastGain[k] * 0.4 + gain * 0.6 : this.nrLastGain[k] * 0.95 + gain * 0.05;\n                                this.nrReal[k] *= this.nrLastGain[k];\n                                this.nrImag[k] *= this.nrLastGain[k];\n                                if (k > 0 && k < FFT_SIZE / 2) {\n                                    this.nrReal[FFT_SIZE - k] *= this.nrLastGain[k];\n                                    this.nrImag[FFT_SIZE - k] *= this.nrLastGain[k];\n                                }\n                            }\n                            workletFft(this.nrReal, this.nrImag, true);\n                            for (let k = 0; k < FFT_SIZE; k++) this.nrOutput[position + k] += this.nrReal[k] * fftWindow[k];\n                        }\n                        for (let i = 0; i < bufferSize; i++) output[i] = this.nrOutput[i] * outputGain;\n                    }\n                    return true;\n                }\n            }\n            registerProcessor('openwebrx-audio-filter', AudioFilterProcessor);\n\n            class DtlnIoProcessor extends AudioWorkletProcessor {\n                constructor() {\n                    super();\n                    this.enabled = false;\n                    this.outQueue = [];\n                    this.outOffset = 0;\n                    this.port.onmessage = (event) => {\n                        const d = event.data;\n                        if (d.type === 'settings') this.enabled = !!d.enabled;\n                        else if (d.type === 'output') this.outQueue.push(d.samples);\n                        else if (d.type === 'reset') { this.outQueue = []; this.outOffset = 0; }\n                    };\n                }\n                process(inputs, outputs) {\n                    const input = inputs[0] && inputs[0][0];\n                    const output = outputs[0] && outputs[0][0];\n                    if (!input || !output) return true;\n                    if (this.enabled) this.port.postMessage({ type: 'input', samples: input.slice() });\n                    for (let i = 0; i < output.length; i++) {\n                        if (this.outQueue.length > 0) {\n                            const chunk = this.outQueue[0];\n                            output[i] = chunk[this.outOffset++];\n                            if (this.outOffset >= chunk.length) { this.outQueue.shift(); this.outOffset = 0; }\n                        } else {\n                            output[i] = input[i];\n                        }\n                    }\n                    return true;\n                }\n            }\n            registerProcessor('openwebrx-dtln-io', DtlnIoProcessor);\n        `,t=URL.createObjectURL(new Blob([n],{type:"application/javascript"}));return e.audioWorklet.addModule(t).finally(()=>URL.revokeObjectURL(t))}(e).then(function(){const n=function(e){return{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[1],processorOptions:{stage:e}}},o=function(o){const i=new AudioWorkletNode(e,"openwebrx-audio-filter",n(o));return i.isCustomFilter=!0,i.addEventListener("processorerror",function(){console.error("[audio_filter] AudioWorklet processor failed:",o),t.workletFallback()}),i.port&&i.port.start&&i.port.start(),i},i=o("nb"),r=o("nr"),a=o("comp"),s=function(e){const n=new AudioWorkletNode(e,"openwebrx-dtln-io",{numberOfInputs:1,numberOfOutputs:1,outputChannelCount:[1]});n.isCustomFilter=!0,n.port.onmessage=function(e){e.data&&"input"===e.data.type&&le(e.data.samples)},n.port.start&&n.port.start();return X.ioPort=n.port,X.outputSink=function(e){n.port.postMessage({type:"output",samples:e},[e.buffer])},n.port.postMessage({type:"settings",enabled:X.enabled}),n}(e);s.addEventListener("processorerror",function(){console.error("[audio_filter] DTLN AudioWorklet processor failed"),t.workletFallback()}),[t.dtlnProcessor,t.nbProcessor,t.nrProcessor,t.compProcessor,t.expanderProcessor,t.limiterProcessor].forEach(function(e){try{e.disconnect()}catch(e){}}),t.dtlnProcessor=s,t.nbProcessor=i,t.nrProcessor=r,t.compProcessor=a,t.expanderProcessor=o("expander"),t.limiterProcessor=o("limiter"),t.workletActive=!0,ce(e),Fe(),l&&t.reset_nr()}).catch(function(n){console.warn("[audio_filter] AudioWorklet stages unavailable; using ScriptProcessorNode fallback:",n),ue(e)}):(console.warn("[audio_filter] Insecure context; using ScriptProcessorNode fallback."),ue(e))}(i),!this.isCustomFilter)return C.call(this,t.inputProxy,n,o)}return C.apply(this,arguments)};const S=1024,_=new Uint16Array(S),E=new Float32Array(S/2),P=new Float32Array(S/2),T=new Float32Array(S);function M(e,n,t){for(let t=0;t<S;t++){const o=_[t];if(t<o){const i=e[t];e[t]=e[o],e[o]=i;const r=n[t];n[t]=n[o],n[o]=r}}let o=1;for(;o<S;){const i=S/(2*o);for(let r=0;r<S;r+=2*o)for(let a=0,l=0;a<o;a++,l+=i){const i=E[l],s=t?-P[l]:P[l],c=r+a+o,u=i*e[c]-s*n[c],d=i*n[c]+s*e[c];e[c]=e[r+a]-u,n[c]=n[r+a]-d,e[r+a]+=u,n[r+a]+=d}o<<=1}if(t){const t=1/S;for(let o=0;o<S;o++)e[o]*=t,n[o]*=t}}!function(){let e=0,n=S;for(;n>1;)n>>=1,e++;for(let n=0;n<S;n++){let t=0,o=n;for(let n=0;n<e;n++)t=t<<1|1&o,o>>=1;_[n]=t}for(let e=0;e<S/2;e++){const n=-2*Math.PI*e/S;E[e]=Math.cos(n),P[e]=Math.sin(n)}for(let e=0;e<S;e++)T[e]=Math.sin(Math.PI*e/S)}();const I=512,A=128,q=16e3,R=65536,L=512,B=480,N=new Uint16Array(I),D=new Float32Array(I/2),H=new Float32Array(I/2),G=new Float32Array(I),O=new Float32Array(I),z=new Float32Array(I/2+1),Q=new Float32Array(I/2+1);function Z(e,n,t){for(let t=0;t<I;t++){const o=N[t];if(t<o){const i=e[t];e[t]=e[o],e[o]=i;const r=n[t];n[t]=n[o],n[o]=r}}let o=1;for(;o<I;){const i=I/(2*o);for(let r=0;r<I;r+=2*o)for(let a=0,l=0;a<o;a++,l+=i){const i=D[l],s=t?-H[l]:H[l],c=r+a+o,u=i*e[c]-s*n[c],d=i*n[c]+s*e[c];e[c]=e[r+a]-u,n[c]=n[r+a]-d,e[r+a]+=u,n[r+a]+=d}o<<=1}if(t){const t=1/I;for(let o=0;o<I;o++)e[o]*=t,n[o]*=t}}!function(){let e=0,n=I;for(;n>1;)n>>=1,e++;for(let n=0;n<I;n++){let t=0,o=n;for(let n=0;n<e;n++)t=t<<1|1&o,o>>=1;N[n]=t}for(let e=0;e<I/2;e++){const n=-2*Math.PI*e/I;D[e]=Math.cos(n),H[e]=Math.sin(n)}}();const W=3,j=256,J=2*W,U=new Float32Array(j*J);function V(e){let n=[],t=W-1;return function(o){for(let e=0;e<o.length;e++)n.push(o[e]);const i=[];for(;;){const o=Math.floor(t);if(o+W>=n.length||o-W+1<0)break;const r=t-o,a=Math.min(j-1,Math.floor(r*j)),l=o-W+1,s=a*J;let c=0;for(let e=0;e<J;e++)c+=n[l+e]*U[s+e];i.push(c),t+=e}const r=Math.floor(t)-W+1;return r>0&&(n.splice(0,r),t-=r),i}}!function(){function e(e){if(0===e)return 1;if(e<=-W||e>=W)return 0;const n=Math.PI*e;return W*Math.sin(n)*Math.sin(n/W)/(n*n)}for(let n=0;n<j;n++){const t=n/j;for(let o=0;o<J;o++){const i=o-W+1;U[n*J+o]=e(t-i)}}}();let X={enabled:!1,loading:!1,ready:!1,engine:null,readyEngine:null,basePath:null,ctxRate:48e3,gainDb:0,maskFloor:.15,presence:.3,presenceState:0,wetMix:.85,rnTarget:.7,rnMaxBoost:60,rnWetMix:.85,rnDry:[],aiEnvelope:.01,aiLastGain:1,rnVadProbability:0,rnVadHangFrames:0,session1:null,session2:null,state1:null,state2:null,rnLoaded:!1,winBuf:new Float32Array(I),outBuf:new Float32Array(I),pending16k:[],pendingOut16k:[],dryDelay:null,resampleIn:null,resampleOut:null,inRing:null,inHead:0,inTail:0,inCount:0,outRing:null,outHead:0,outTail:0,outCount:0,pumpTimer:null,outputSink:null,ioPort:null,buttons:{}};function Y(){X.winBuf.fill(0),X.outBuf.fill(0),X.pending16k=[],X.pendingOut16k=[],X.presenceState=0,X.dryDelay=new Array(I-A).fill(0),X.state1&&X.state1.fill(0),X.state2&&X.state2.fill(0);const e="dtln"===X.engine?q:48e3;X.resampleIn=V(X.ctxRate/e),X.resampleOut=V(e/X.ctxRate),X.inHead=X.inTail=X.inCount=0,X.outHead=X.outTail=X.outCount=0,X.aiEnvelope=.01,X.aiLastGain=1,X.rnVadProbability=0,X.rnVadHangFrames=0,X.rnDry=[],X.ioPort&&X.ioPort.postMessage({type:"reset"})}function K(){const e=document.getElementsByTagName("script");for(let n=0;n<e.length;n++){const t=e[n].src;if(t&&/audio_filter\.js(\?.*)?$/.test(t))return t.replace(/[^\/]+$/,"")}return"./"}let ee=null;function ne(){const e=X.buttons[X.engine];e&&(e.update&&e.update(),e.element&&X.loading&&(e.element.style.background="#e8a33d",e.element.style.color="#000"))}function te(){return"rnnoise"===X.engine?async function(){if(X.ready&&"rnnoise"===X.readyEngine)return!0;if(X.loading)return!1;X.loading=!0,ne();try{X.basePath=X.basePath||K(),X.rnLoaded||(await(n={type:"init-rnnoise",basePath:X.basePath},ee||(ee=window.AudioFilterModules.aiEnhancement.createRnnoiseWorkerController()),ee.request(n,t)),X.rnLoaded=!0),X.ready=!0,X.readyEngine="rnnoise",Y(),X.ioPort&&X.ioPort.postMessage({type:"settings",enabled:X.enabled})}catch(n){console.error(`[${e}] Failed to load RNNoise:`,n),oe()}finally{X.loading=!1,ne()}var n,t;return X.ready&&"rnnoise"===X.readyEngine}():"dtln"===X.engine?async function(){if(X.ready&&"dtln"===X.readyEngine)return!0;if(X.loading)return!1;X.loading=!0,ne();try{X.basePath=X.basePath||K(),await(window.ort?Promise.resolve():new Promise(function(e,n){const t=document.createElement("script");t.src=X.basePath+"ort/ort.min.js",t.onload=function(){e()},t.onerror=function(){n(new Error("Failed to load onnxruntime-web"))},document.head.appendChild(t)})),ort.env.wasm.wasmPaths=X.basePath+"ort/",ort.env.wasm.numThreads=1,X.session1=await ort.InferenceSession.create(X.basePath+"model_1.onnx",{executionProviders:["wasm"]}),X.session2=await ort.InferenceSession.create(X.basePath+"model_2.onnx",{executionProviders:["wasm"]}),X.state1=new Float32Array(L),X.state2=new Float32Array(L),X.ready=!0,X.readyEngine="dtln",Y(),X.ioPort&&X.ioPort.postMessage({type:"settings",enabled:X.enabled})}catch(n){console.error(`[${e}] Failed to load DTLN model:`,n),oe()}finally{X.loading=!1,ne()}return X.ready&&"dtln"===X.readyEngine}():Promise.resolve(!1)}function oe(){X.enabled=!1,m=!1,localStorage.setItem("openwebrx-audio-filter-ai-engine","none"),X.ioPort&&X.ioPort.postMessage({type:"settings",enabled:!1})}async function ie(e){return window.AudioFilterModules.dtln.processHop(X,e,{blockSize:I,hopSize:A,real:G,imag:O,magnitude:z,phase:Q,fft:Z,ort:ort})}function re(e){return ee||(ee=window.AudioFilterModules.aiEnhancement.createRnnoiseWorkerController()),ee.processHop(X,e)}async function ae(){if(X.enabled&&X.ready&&X.readyEngine===X.engine){try{if(X.inCount>0){const e=new Float32Array(X.inCount);for(let n=0;n<e.length;n++)e[n]=X.inRing[X.inHead],X.inHead=(X.inHead+1)%R;X.inCount=0;const n=X.resampleIn(e);for(let e=0;e<n.length;e++)X.pending16k.push(n[e])}const e="rnnoise"===X.engine?B:A;for(;X.pending16k.length>=e&&X.enabled;){const n=X.pending16k.splice(0,e);if("rnnoise"===X.engine){const e=await re(n);for(let n=0;n<e.length;n++)X.pendingOut16k.push(e[n])}else await ie(n)}if(X.pendingOut16k.length>0){const e=new Float32Array(X.pendingOut16k);X.pendingOut16k=[];const n=X.resampleOut(e);if(n.length>0&&X.outputSink){const e=Math.pow(10,X.gainDb/20),t=new Float32Array(n.length);for(let o=0;o<n.length;o++){const i=n[o],r=i+X.presence*(i-X.presenceState);X.presenceState=i,t[o]=r*e}X.outputSink(t)}}}catch(n){console.error(`[${e}] AI processing error:`,n)}X.pumpTimer=setTimeout(ae,4)}else X.pumpTimer=setTimeout(ae,20)}function le(e){for(let n=0;n<e.length;n++)X.inRing[X.inTail]=e[n],X.inTail=(X.inTail+1)%R,X.inCount<R&&X.inCount++}function se(e){const n=e.createScriptProcessor(2048,1,1);return n.isCustomFilter=!0,X.ioPort=null,X.outputSink=function(e){for(let n=0;n<e.length;n++)X.outCount<R&&(X.outRing[X.outTail]=e[n],X.outTail=(X.outTail+1)%R,X.outCount++)},n.onaudioprocess=function(e){const n=e.inputBuffer.getChannelData(0),t=e.outputBuffer.getChannelData(0);if(X.enabled&&X.ready){le(n);for(let e=0;e<t.length;e++)X.outCount>0?(t[e]=X.outRing[X.outHead],X.outHead=(X.outHead+1)%R,X.outCount--):t[e]=n[e]}else t.set(n)},n}function ce(e){const n=[t.inputProxy,t.nbProcessor,...t.humFilters,t.analyser,...t.notches,t.nrProcessor,t.highpass,t.loudness,t.peaking,t.air,t.lowpass,t.compHighpass,t.compLowpass,t.compProcessor,t.gain,t.dtlnProcessor,t.expanderProcessor,t.limiterProcessor,t.outputAnalyser].filter(Boolean);n.forEach(function(e){try{e.disconnect()}catch(e){}});for(let e=0;e<n.length-1;e++)n[e].connect(n[e+1]);C.call(t.outputAnalyser,e.destination)}function ue(e){const n=function(n){const t=e.createScriptProcessor(4096,1,1);return t.isCustomFilter=!0,t.onaudioprocess=n,t},o=window.AudioFilterModules.noiseBlanker.createState(),i=n(function(n){const i=n.inputBuffer.getChannelData(0),r=n.outputBuffer.getChannelData(0),a=t.dynamicsSettings||{};for(let n=0;n<i.length;n++)r[n]=window.AudioFilterModules.noiseBlanker.processSample(o,i[n],a,e.sampleRate)});const r=window.AudioFilterModules.noiseReduction.createScriptProcessor(e,{fftSize:S,fftWindow:T,performFFT:M,getSettings:function(){return t.nrSettings}}),a=window.AudioFilterModules.compressor.createState(),l=n(function(n){const o=n.inputBuffer.getChannelData(0),i=n.outputBuffer.getChannelData(0),r=t.dynamicsSettings||{};for(let n=0;n<o.length;n++)i[n]=window.AudioFilterModules.compressor.processSample(a,o[n],r,e.sampleRate)}),s=window.AudioFilterModules.speechExpander.createState(),c=n(function(n){const o=n.inputBuffer.getChannelData(0),i=n.outputBuffer.getChannelData(0),r=t.dynamicsSettings||{};for(let n=0;n<o.length;n++)i[n]=window.AudioFilterModules.speechExpander.processSample(s,o[n],r,e.sampleRate)}),u=window.AudioFilterModules.outputLimiter.createState(),d=n(function(n){const o=n.inputBuffer.getChannelData(0),i=n.outputBuffer.getChannelData(0),r=t.dynamicsSettings||{};for(let n=0;n<o.length;n++)i[n]=window.AudioFilterModules.outputLimiter.processSample(u,o[n],r,e.sampleRate)}),p=se(e);[t.dtlnProcessor,t.nbProcessor,t.nrProcessor,t.compProcessor,t.expanderProcessor,t.limiterProcessor].forEach(function(e){try{e.disconnect()}catch(e){}}),t.dtlnProcessor=p,t.nbProcessor=i,t.nrProcessor=r,t.compProcessor=l,t.expanderProcessor=c,t.limiterProcessor=d,ce(e),t.workletActive=!1,console.warn("[audio_filter] AudioWorklet unavailable; using ScriptProcessorNode fallback.")}function de(){if(!x)if(window.AudioFilterModules&&window.AudioFilterModules.autoNotch&&window.AudioFilterModules.equalizer&&window.AudioFilterModules.noiseBlanker&&window.AudioFilterModules.humFilter&&window.AudioFilterModules.compressor&&window.AudioFilterModules.noiseReduction&&window.AudioFilterModules.speechExpander&&window.AudioFilterModules.outputLimiter&&window.AudioFilterModules.aiEnhancement&&window.AudioFilterModules.dtln)try{"true"===localStorage.getItem("openwebrx-audio-filter-enabled")&&(r=!0),"true"===localStorage.getItem("openwebrx-audio-filter-nr")&&(l=!0),"true"===localStorage.getItem("openwebrx-audio-filter-autonotch")&&(c=!0),"true"===localStorage.getItem("openwebrx-audio-filter-declick")&&(a=!0),"true"===localStorage.getItem("openwebrx-audio-filter-compressor")&&(s=!0),"true"===localStorage.getItem("openwebrx-audio-filter-hum")&&(u=!0),"true"===localStorage.getItem("openwebrx-audio-filter-expander")&&(d=!0),"true"===localStorage.getItem("openwebrx-audio-filter-limiter")&&(p=!0),"true"===localStorage.getItem("openwebrx-audio-filter-loudness")&&(h=!0);const n=localStorage.getItem("openwebrx-audio-filter-ai-engine");n&&"none"!==n?(X.engine=n,"df"===X.engine&&(X.engine="dtln"),m=!0):n||"true"!==localStorage.getItem("openwebrx-audio-filter-dtln")||(X.engine="dtln",m=!0),X.enabled=m,m&&te();try{const e=localStorage.getItem("openwebrx-audio-filter-settings");if(e){const n=JSON.parse(e);n.ssb||n.am||n.cw||n.nfm||n.wfm||n.digital?(n.ssb&&(w.ssb=n.ssb),n.am&&(w.am=n.am),n.cw&&(w.cw=n.cw),n.nfm&&(w.nfm=n.nfm),n.wfm&&(w.wfm=n.wfm),n.digital&&(w.digital=n.digital)):w.ssb=n}}catch(n){console.error(`[${e}] Error loading settings:`,n)}if(!function(){if("undefined"!=typeof Plugins&&"function"==typeof Plugins.addButton)return me||(me=Plugins.addButton(e,"AF",fe),me&&(me.title="Audio Filter Controls (EQ, NR, NB, Comp, Notch)")),ge||xe(),Me(),!0;return function(){var e=document.querySelector("#openwebrx-panel-receiver");if(!e)return!1;if(!document.getElementById("audio-filter-toggle-btn")){var n=document.createElement("div");n.id="audio-filter-toggle-btn",n.textContent="AF",n.title="Open Audio Filter Controls",n.style.cssText="position: absolute; bottom: 3px; left: 4px; z-index: 99; font-size: 12px; font-weight: bold; color: #aaa; cursor: pointer; background: rgba(0,0,0,0.5); padding: 0px 4px; border-radius: 3px; border: 1px solid #666; user-select: none; line-height: 12px; transition: left 0.2s;",n.onclick=function(){var e=document.getElementById("audio-filter-floating-panel");e&&("none"===e.style.display?e.style.display="block":e.style.display="none",Me(),"none"!==e.style.display&&document.getElementById("audio-filter-graph-check").checked&&startMainGraphLoop())},e.appendChild(n);var t=function(){var e=document.getElementById("audio-filter-toggle-btn");if(e){var n=document.querySelector("#openwebrx-panel-receiver");if(n){var t=Array.from(n.querySelectorAll('div[id$="-toggle-btn"], div[id$="-btn"], div[id="openwebrx-clock-utc"]')).filter(e=>null!==e.offsetParent);t.sort((e,n)=>"openwebrx-clock-utc"===e.id?-1:"openwebrx-clock-utc"===n.id?1:e.id.localeCompare(n.id));for(var o=4,i=0;i<t.length;i++){var r=t[i];if(r.id===e.id)break;var a=r.getBoundingClientRect();a.width>0&&(o+=a.width+4)}e.style.left=o+"px"}}};setInterval(t,1e3),t()}if(!document.getElementById("audio-filter-floating-panel")){var o=document.createElement("div");o.id="audio-filter-floating-panel",o.style.cssText="display: none; position: fixed; top: 200px; left: 10px; background: rgba(30,30,30,0.95); border: 1px solid #666; border-radius: 5px; padding: 0; z-index: 10000; box-shadow: 0 0 10px rgba(0,0,0,0.5); font-family: sans-serif;";var i=document.createElement("div");i.textContent="Audio Filter",i.style.cssText="height: 18px; line-height: 18px; font-size: 11px; color: #ddd; text-align: center; background: #444; cursor: move; border-radius: 5px 5px 0 0; width: 100%; border-bottom: 1px solid #555; user-select: none;",i.title="Drag to move",o.appendChild(i);var r=!1,a=0,l=0,s=function(e){r=!0;var n=e.clientX,t=e.clientY;e.touches&&e.touches.length>0&&(n=e.touches[0].clientX,t=e.touches[0].clientY),a=n-o.offsetLeft,l=t-o.offsetTop,e.preventDefault()},c=function(e){if(r){var n=e.clientX,t=e.clientY;e.touches&&e.touches.length>0&&(n=e.touches[0].clientX,t=e.touches[0].clientY),o.style.left=n-a+"px",o.style.top=t-l+"px","touchmove"===e.type&&e.preventDefault()}},u=function(){r=!1};i.addEventListener("mousedown",s),document.addEventListener("mousemove",c),document.addEventListener("mouseup",u),i.addEventListener("touchstart",s,{passive:!1}),document.addEventListener("touchmove",c,{passive:!1}),document.addEventListener("touchend",u);var d=document.createElement("div");d.style.padding="5px",be(d),o.appendChild(d),document.body.appendChild(o)}return Me(),!0}()}())return void setTimeout(de,250);i=ye();let t=F(i);w[t]&&(v=JSON.parse(JSON.stringify(w[t]))),setInterval(ve,500),setInterval(ke,50),x=!0,"undefined"!=typeof Plugins&&Plugins.audio_filter&&(Plugins.audio_filter.is_initialized=!0)}catch(n){console.error(`[${e}] Error during initialization:`,n)}else(o||(o=new Promise(function(e,n){if(window.AudioFilterModulesBundled)return void e();const t=["auto-notch.js","equalizer.js","noise-blanker.js","hum-filter.js","compressor.js","noise-reduction.js","speech-expander.js","output-limiter.js","ai-enhancement.js","dtln.js"];let o=0;const i=function(){if(o>=t.length)return void e();const r=document.createElement("script");r.src=K()+"modules/"+t[o++],r.onload=i,r.onerror=function(){n(new Error("Failed to load "+r.src))},document.head.appendChild(r)};i()}),o)).then(de).catch(function(n){console.error(`[${e}] Error loading filter modules:`,n)})}let pe={w:0,maxFreq:0,freqArray:null,magResponse:null,phaseResponse:null,totalResp:null,spectrumData:null};function he(e,o,a,l,u){e.clearRect(0,0,o,a);const d=50,p=t.outputAnalyser?t.outputAnalyser.context.sampleRate:48e3,h=Math.max(51,Math.min(16e3,p/2-100)),m=e=>(e<d&&(e=d),e>h&&(e=h),(o-2)*(Math.log(e)-Math.log(d))/(Math.log(h)-Math.log(d))+1);if(pe.w!==o||pe.maxFreq!==h){pe.w=o,pe.maxFreq=h,pe.freqArray=new Float32Array(o),pe.magResponse=new Float32Array(o),pe.phaseResponse=new Float32Array(o),pe.totalResp=new Float32Array(o);for(let e=0;e<o;e++){let n=(e-1)/(o-2);n<0&&(n=0),n>1&&(n=1),pe.freqArray[e]=d*Math.pow(h/d,n)}}const{freqArray:x,magResponse:b,phaseResponse:y,totalResp:w}=pe;if(s){if(t.compHighpass&&t.compLowpass){const n=m(t.compHighpass.frequency.value),o=m(t.compLowpass.frequency.value);e.fillStyle="rgba(57, 255, 20, 0.1)",e.fillRect(n,0,o-n,a)}if(t.compHighpass){const n=m(t.compHighpass.frequency.value);e.fillStyle="rgba(57, 255, 20, 0.8)",e.font="9px sans-serif",e.textAlign="left",e.fillText("Comp",n+2,10)}}if(r&&t.highpass){e.strokeStyle="rgba(255, 255, 0, 0.5)",e.lineWidth=1,e.setLineDash([2,2]);const n=m(t.highpass.frequency.value);if(e.beginPath(),e.moveTo(n,0),e.lineTo(n,a),e.stroke(),t.lowpass){const n=m(t.lowpass.frequency.value);e.beginPath(),e.moveTo(n,0),e.lineTo(n,a),e.stroke()}if(e.setLineDash([]),t.peaking&&Math.abs(t.peaking.gain.value)>.1){const n=t.peaking.frequency.value,o=t.peaking.Q.value,i=Math.sqrt(1+1/(4*o*o)),r=1/(2*o),l=n*(i+r),s=m(n*(i-r)),c=m(l);e.fillStyle="rgba(255, 255, 0, 0.15)",e.fillRect(s,0,c-s,a)}}if(c&&t.notches){let n=null!==v.notchRange&&void 0!==v.notchRange?v.notchRange:4e3,i=null!==v.notchCenter&&void 0!==v.notchCenter?v.notchCenter:n/2,r=n/2,l=Math.max(50,i-r),s=i+r;const c=m(l),u=m(s);e.fillStyle="rgba(255, 50, 50, 0.1)",e.fillRect(c,0,u-c,a);const d=t.notches.filter(e=>e.frequency.value>10);d.length>0&&(((n,t,i)=>{if(!i||0===i.length)return;w.fill(1);let r=!1;if(i.forEach(e=>{if(e&&e.getFrequencyResponse){e.getFrequencyResponse(x,b,y);for(let e=0;e<o;e++)w[e]*=b[e];r=!0}}),r){e.beginPath(),e.strokeStyle=n,e.lineWidth=1.5,t&&(e.fillStyle=t);for(let n=0;n<o;n++){let t=w[n];t<1e-5&&(t=1e-5);let o=40-20*Math.log10(t)*(a-40)/60;0===n?e.moveTo(n,o):e.lineTo(n,o)}t&&(e.lineTo(o,a),e.lineTo(0,a),e.fill()),e.stroke(),e.lineWidth=1}})("rgba(255, 50, 50, 0.8)",null,d),e.fillStyle="rgba(255, 255, 0, 0.9)",d.forEach(n=>{const t=n.frequency.value/n.Q.value,o=m(n.frequency.value-t/2),i=m(n.frequency.value+t/2),r=Math.max(2,i-o);e.fillRect(o,0,r,6)}))}const k=(n,t)=>{if(!n)return;const i=n.frequencyBinCount;pe.spectrumData&&pe.spectrumData.length===i||(pe.spectrumData=new Uint8Array(i));const r=pe.spectrumData;n.getByteFrequencyData(r);const l=n.context.sampleRate;e.beginPath(),e.strokeStyle=t,e.lineWidth=1;let s=!1;for(let n=0;n<o;n++){let t=pe.freqArray[n],o=Math.floor(t/(l/2)*i);o<0&&(o=0),o>=i&&(o=i-1);let c=a-r[o]/255*a;s?e.lineTo(n,c):(e.moveTo(n,c),s=!0)}e.stroke()};g&&k(t.analyser,"rgba(255, 255, 0, 0.6)"),f&&k(t.outputAnalyser,"rgba(0, 255, 255, 0.8)"),e.font="9px sans-serif",e.textAlign="left",e.textBaseline="middle",e.fillStyle=g?"rgba(255, 255, 0, 0.8)":"rgba(100, 100, 0, 0.6)",e.fillRect(5,5,6,6),e.fillStyle=g?"#ddd":"#666",e.fillText("In",14,8),e.fillStyle=f?"rgba(0, 255, 255, 0.8)":"rgba(0, 100, 100, 0.6)",e.fillRect(32,5,6,6),e.fillStyle=f?"#ddd":"#666",e.fillText("Out",41,8),e.fillStyle="#fff",e.font="9px sans-serif",e.textAlign="center",e.textBaseline="bottom";const C=[100,200,500,1e3,2e3,4e3,8e3,12e3,16e3].filter(e=>e<=h);if(e.beginPath(),C.forEach(n=>{const t=m(n);e.moveTo(t,a),e.lineTo(t,a-4);let o=n>=1e3?n/1e3+"k":n;e.fillText(o,t,a-4)}),e.strokeStyle="#555",e.stroke(),l&&l>0){let a=null;if(c){let e=null!==v.notchRange&&void 0!==v.notchRange?v.notchRange:4e3,n=null!==v.notchCenter&&void 0!==v.notchCenter?v.notchCenter:e/2,t=e/2,o=Math.max(50,n-t),i=n+t;const r=m(o),s=m(i);l>=r&&l<=s&&(a="Notch Range")}if(r&&t.peaking&&Math.abs(t.peaking.gain.value)>.1){const e=t.peaking.frequency.value,n=t.peaking.Q.value,o=Math.sqrt(1+1/(4*n*n)),i=1/(2*n),r=e*(o+i),s=m(e*(o-i)),c=m(r);l>=s&&l<=c&&(a="Presence Range")}const u=(e,n)=>{Math.abs(e-l)<5&&(a=n)};if(s){let e=F(i),t=n[e];const o=null!==v.compHPF&&void 0!==v.compHPF?v.compHPF:t.compHPF||300,r=null!==v.compLPF&&void 0!==v.compLPF?v.compLPF:t.compLPF||3e3,s=m(o),c=m(r);l>=s&&l<=c&&(a="Comp Range")}if(r&&t.highpass&&t.lowpass&&(u(m(t.highpass.frequency.value),`EQ Highpass: ${Math.round(t.highpass.frequency.value)}Hz`),u(m(t.lowpass.frequency.value),`EQ Lowpass: ${Math.round(t.lowpass.frequency.value)}Hz`)),a){e.font="10px sans-serif";const n=e.measureText(a).width,t=Math.min(Math.max(l-n/2,0),o-n-4),i=20;e.fillStyle="rgba(0,0,0,0.8)",e.fillRect(t-2,i-10,n+4,14),e.fillStyle="#fff",e.textAlign="left",e.fillText(a,t,i)}}}let me=null,ge=!1;function fe(){var n;(ge||xe(),"undefined"!=typeof Plugins&&"function"==typeof Plugins.toggleWindow)?Plugins.toggleWindow(e):(n=document.getElementById("plugin-window-"+e))&&(n.style.display="none"!==n.style.display&&n.style.display?"none":"flex");(n=document.getElementById("plugin-window-"+e))&&("undefined"!=typeof $?$(n).is(":visible"):"none"!==n.style.display)&&document.getElementById("audio-filter-graph-check")&&document.getElementById("audio-filter-graph-check").checked&&"function"==typeof window.startMainGraphLoop&&window.startMainGraphLoop(),Me()}function xe(){if(!ge){var n=null;if("undefined"!=typeof Plugins&&"function"==typeof Plugins.addWindow&&(n=Plugins.addWindow(e,"Audio Filter")),n){if("undefined"!=typeof LS){const t="plugin_"+e;LS.has(t+"_w")||(n.style.width="375px")}$(n).find(".openwebrx-plugin-close").on("click touchend",()=>{setTimeout(Me,50)});var t=n.querySelector(".openwebrx-plugin-body");t||(t=n),t.style.padding="6px",t.style.overflow="hidden",be(t),ge=!0}}}function be(o){var x=document.createElement("div");x.style.padding="2px";var C=document.createElement("div");function S(e,n,t,o,i,r){var a=document.createElement("button");function l(){var n=!!o&&o(),i=e;t&&(i+='<span style="position: absolute; top: 2px; right: 3px; height: 9px; line-height: 9px; font-size: 9px; opacity: 0.7;">&#9698;</span>'),a.innerHTML=i,n?(a.style.background="#39FF14",a.style.color="black"):(a.style.background="#444",a.style.color="#fff")}if(a.style.cssText="position: relative; width: 45px; height: 32px; padding: 0; line-height: 32px; font-size: 11px; font-weight: 600; border: none; border-radius: 5px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: all 0.3s ease; background: #444; color: #fff; user-select: none; -webkit-user-select: none;",a.title=n,l(),r){var s,c=!1,u=function(e){"mousedown"===e.type&&0!==e.button||(c=!1,s=setTimeout(function(){c=!0,r(a.getBoundingClientRect())},600))},d=function(e){s&&clearTimeout(s),c||("touchend"===e.type&&e.preventDefault(),i(),l(),Me())};a.addEventListener("mousedown",u),a.addEventListener("mouseup",d),a.addEventListener("mouseleave",function(){s&&clearTimeout(s)}),a.addEventListener("touchstart",u,{passive:!0}),a.addEventListener("touchend",d)}else a.onclick=function(){i(),l(),Me()};return{element:a,update:l}}C.style.cssText="display: flex; gap: 4px; flex-wrap: wrap; justify-content: space-evenly;";var _=S("NB","Enable/Disable Noise Blanker.",!1,()=>a,()=>{a=!a,localStorage.setItem("openwebrx-audio-filter-declick",a),Fe()}).element,E=S("Hum","Enable/Disable mains hum filter. Long press for 50/60 Hz settings.",!0,()=>u,()=>{u=!u,localStorage.setItem("openwebrx-audio-filter-hum",u),Fe()},e=>function(e){Ce("audio-filter-hum-menu","Mains Hum Filter",e,210,function(e){const n=document.createElement("label");n.style.cssText="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;",n.appendChild(document.createTextNode("Mains frequency"));const t=document.createElement("select");[50,60].forEach(function(e){const n=document.createElement("option");n.value=e,n.textContent=e+" Hz",t.appendChild(n)}),t.value=null!==v.humFrequency&&void 0!==v.humFrequency?v.humFrequency:50,t.onchange=function(){v.humFrequency=parseInt(t.value,10),Fe(),k()},n.appendChild(t),e.appendChild(n),Se(e,"Harmonics","humHarmonics",1,window.AudioFilterModules.humFilter.maxHarmonics,1,4,function(e){return String(Math.round(e))})})}(e)).element,P=S("Notch","Enable/Disable Auto Notch. Long press for settings.",!0,()=>c,()=>{c=!c,localStorage.setItem("openwebrx-audio-filter-autonotch",c),c||window.AudioFilterModules.autoNotch.disable(t.notches)},e=>Te(e)).element,T=S("NR","Enable/Disable Noise Reduction. Long press for settings.",!0,()=>l,()=>{l=!l,localStorage.setItem("openwebrx-audio-filter-nr",l),Fe(),l&&t.reset_nr&&t.reset_nr()},e=>function(e){Ce("audio-filter-nr-menu","Spectral Noise Reduction",e,200,function(e){function t(e,t,o,r,a,l){var s=document.createElement("div");s.style.marginBottom="8px";var c=n[F(i)][t];void 0===c&&("nr_gain"===t?c=0:"nr_alpha"===t?c=.95:"nr_snr"===t?c=10:"nr_comb"===t&&(c=.5));var u=null!==v[t]&&void 0!==v[t]?v[t]:c,d=document.createElement("div");d.textContent=e+": "+(u*(l||1)).toFixed(l?0:4),d.style.marginBottom="2px";var p=document.createElement("input");return p.type="range",p.min=o,p.max=r,p.step=a,p.value=u,p.style.width="100%",p.oninput=function(){var n=parseFloat(p.value);d.textContent=e+": "+(n*(l||1)).toFixed(l?0:4),v[t]=n,Fe()},p.onchange=function(){k()},s.appendChild(d),s.appendChild(p),s}e.appendChild(t("Gain (dB)","nr_gain",-60,60,1,1)),e.appendChild(t("Alpha (Smooth)","nr_alpha",.9,.9999,1e-4)),e.appendChild(t("Active SNR (dB)","nr_snr",-10,40,1,1)),e.appendChild(t("Comb Strength","nr_comb",0,1,.05));var o=document.createElement("div");o.style.marginTop="10px",o.style.borderTop="1px solid #444",o.style.paddingTop="5px";var r=document.createElement("label");r.style.display="flex",r.style.alignItems="center",r.style.cursor="pointer";var a=document.createElement("input");a.type="checkbox";let l=F(i),s=n[l];a.checked=null!==v.nr_speech_mode&&void 0!==v.nr_speech_mode?v.nr_speech_mode:void 0!==s.nr_speech_mode&&s.nr_speech_mode,a.style.marginRight="8px",a.onchange=function(){v.nr_speech_mode=a.checked,Fe(),k()},r.appendChild(a),r.appendChild(document.createTextNode("Speech Mode (Fast Adapt)")),o.appendChild(r),e.appendChild(o)})}(e)).element,M=S("EQ","Enable/Disable Equalizer. Long press for settings.",!0,()=>r,()=>{r=!r,localStorage.setItem("openwebrx-audio-filter-enabled",r),Fe()},e=>function(e){Ce("audio-filter-eq-menu",null,e,200,function(e){let t=F(i),o=n[t],r=null!==v.highpassFreq?v.highpassFreq:o.highpassFreq,a=null!==v.lowpassFreq?v.lowpassFreq:o.lowpassFreq,l=null!==v.peakingGain?v.peakingGain:o.peakingGain,s=null!==v.peakingFreq&&void 0!==v.peakingFreq?v.peakingFreq:o.peakingFreq,c=null!==v.peakingQ&&void 0!==v.peakingQ?v.peakingQ:o.peakingQ||1;var u=[];function d(e,n,t,o){var i=document.createElement("div");i.style.marginBottom="8px";var r=function(n){return o?e+": "+o(n):e+": "+Math.round(n)+"%"},a=document.createElement("div");a.textContent=r(n),a.style.marginBottom="2px";var l=document.createElement("input");l.type="range",l.min=0,l.max=100,l.value=n,l.style.width="100%";var s=function(e){l.value=e,a.textContent=r(e)};return u.push(s),l.oninput=function(){a.textContent=r(parseFloat(l.value)),t(parseFloat(l.value))},l.onchange=function(){k()},i.appendChild(a),i.appendChild(l),i}var p=50,m=1350,g=100*(m-r)/(m-p);g<0&&(g=0),g>100&&(g=100),e.appendChild(d("Bass",g,function(e){var n=m-e/100*(m-p);v.highpassFreq=n,Fe()}));var f=1500,x=13500,b=100*Math.log(a/f)/Math.log(x/f);b<0&&(b=0),b>100&&(b=100),e.appendChild(d("Treble",b,function(e){var n=f*Math.pow(x/f,e/100);v.lowpassFreq=n,Fe()}));var y=100*l/33;y<0&&(y=0),y>100&&(y=100),e.appendChild(d("Presence",y,function(e){v.peakingGain=33*e/100,Fe()}));var C=200,S=8e3,_=100*Math.log(s/C)/Math.log(S/C);_<0&&(_=0),_>100&&(_=100);var E=.5,P=4;e.appendChild(d("Presence Freq",_,function(e){var n=C*Math.pow(S/C,e/100);if(v.peakingFreq=n,Fe(),u[4]){var t=null!==v.peakingQ&&void 0!==v.peakingQ?v.peakingQ:c,o=100*(P-t)/(P-E);o<0&&(o=0),o>100&&(o=100),u[4](o)}},function(e){var n=C*Math.pow(S/C,e/100);return Math.round(n)+"Hz"}));var T=100*(P-c)/(P-E);T<0&&(T=0),T>100&&(T=100),e.appendChild(d("Presence Width",T,function(e){var n=P-e/100*(P-E);v.peakingQ=n,Fe()},function(e){var n=P-e/100*(P-E),t=(null!==v.peakingFreq&&void 0!==v.peakingFreq?v.peakingFreq:s)/n;return Math.round(t)+"Hz (Q: "+n.toFixed(1)+")"}));var M=document.createElement("div");M.style.marginTop="10px",M.style.borderTop="1px solid #444",M.style.paddingTop="5px";var I=document.createElement("label");I.style.display="flex",I.style.alignItems="center",I.style.cursor="pointer";var A=document.createElement("input");A.type="checkbox",A.checked=h,A.style.marginRight="8px",A.onchange=function(){h=A.checked,localStorage.setItem("openwebrx-audio-filter-loudness",h),Fe(),Me()},I.appendChild(A),I.appendChild(document.createTextNode("Loudness")),M.appendChild(I),e.appendChild(M);var q=document.createElement("button");q.textContent="Default",q.style.cssText="margin-top: 10px; width: 100%; height: 24px; background: #444; color: #fff; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; user-select: none; -webkit-user-select: none;",q.onclick=function(){let e=F(i),t=n[e];v.highpassFreq=null,v.lowpassFreq=null,v.peakingGain=null,v.peakingFreq=null,v.peakingQ=null,v.nr_gain=null,v.nr_alpha=null,v.nr_snr=null,v.nr_speech_mode=null,w[e]&&(w[e].highpassFreq=null,w[e].lowpassFreq=null,w[e].peakingGain=null,w[e].peakingFreq=null,w[e].peakingQ=null,w[e].nr_gain=null,w[e].nr_alpha=null,w[e].nr_snr=null,w[e].nr_speech_mode=null),h=!1,localStorage.setItem("openwebrx-audio-filter-loudness","false"),A.checked=!1,k(),Fe(),Me();var o=100*(m-t.highpassFreq)/(m-p);o<0&&(o=0),o>100&&(o=100),u[0](o);var r=100*Math.log(t.lowpassFreq/f)/Math.log(x/f);r<0&&(r=0),r>100&&(r=100),u[1](r);var a=100*(t.peakingGain||0)/33;a<0&&(a=0),a>100&&(a=100),u[2](a);var l=100*Math.log((t.peakingFreq||2e3)/C)/Math.log(S/C);l<0&&(l=0),l>100&&(l=100),u[3](l);var s=t.peakingQ||1,c=100*(P-s)/(P-E);c<0&&(c=0),c>100&&(c=100),u[4](c)},e.appendChild(q)})}(e)).element,I=S("Comp","Enable/Disable Compressor. Long press for settings.",!0,()=>s,()=>{s=!s,localStorage.setItem("openwebrx-audio-filter-compressor",s),Fe()},e=>_e(e)).element,A=S("Exp","Enable/Disable speech expander. Long press for settings.",!0,()=>d,()=>{d=!d,localStorage.setItem("openwebrx-audio-filter-expander",d),Fe()},e=>function(e){Ce("audio-filter-expander-menu","Speech Expander",e,210,function(e){Se(e,"Threshold (dBFS)","expanderThresholdDb",-80,0,1,-52,function(e){return Math.round(e)+" dB"}),Se(e,"Gain floor","expanderFloorDb",-36,-6,1,-18,function(e){return Math.round(e)+" dB"}),Se(e,"Ratio","expanderRatio",1,4,.1,1.8,function(e){return Number(e).toFixed(1)+":1"})})}(e)).element,q=S("Lim","Enable/Disable output limiter. Long press for settings.",!0,()=>p,()=>{p=!p,localStorage.setItem("openwebrx-audio-filter-limiter",p),Fe()},e=>function(e){Ce("audio-filter-limiter-menu","Output Limiter",e,210,function(e){Se(e,"Ceiling","limiterCeilingDb",-36,0,.5,-1,function(e){return Number(e).toFixed(1)+" dBFS"})})}(e)).element;let R=0;function L(e){X.engine===e&&m?(m=!1,X.enabled=!1):(X.engine=e,m=!0,X.enabled=!0),localStorage.setItem("openwebrx-audio-filter-ai-engine",m?e:"none"),X.ioPort&&X.ioPort.postMessage({type:"settings",enabled:X.enabled}),m&&(Y(),te()),function(){if(!l||!t.reset_nr)return;const e=++R;setTimeout(function(){e===R&&l&&t.reset_nr&&t.reset_nr()},600)}()}var B=S("AI","Enable/Disable AI Speech Enhancement (DTLN, best for AM). Long press for settings.",!0,()=>m&&"dtln"===X.engine,()=>L("dtln"),e=>Ee(e)),N=S("RN","Enable/Disable AI Speech Enhancement (RNNoise). Long press for settings.",!0,()=>m&&"rnnoise"===X.engine,()=>L("rnnoise"),e=>Pe(e));X.buttons.dtln=B,X.buttons.rnnoise=N,C.appendChild(_),C.appendChild(E),C.appendChild(P),C.appendChild(T),C.appendChild(M),C.appendChild(I);var D=document.createElement("div");D.style.cssText="flex: 0 0 100%; height: 0;",C.appendChild(D),C.appendChild(B.element),C.appendChild(N.element),C.appendChild(A),C.appendChild(q);var H=document.createElement("button");H.style.cssText="position: relative; width: 45px; height: 32px; padding: 0; line-height: 32px; font-size: 11px; font-weight: 600; border: none; border-radius: 5px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: all 0.3s ease; background: #444; color: #fff; user-select: none; -webkit-user-select: none;",H.title="Plugin Settings (Import/Export)",H.innerHTML='Set<span style="position: absolute; right: 3px; bottom: 2px; font-size: 9px; opacity: 0.7;">&#9698;</span>',H.onclick=function(){Ce("audio-filter-settings-menu","Plugin Settings",H.getBoundingClientRect(),150,function(t){function o(){var e={};return Object.keys(n).forEach(function(t){e[t]={},b.forEach(function(o){var i=w[t]&&w[t][o];e[t][o]=null!=i?i:Object.prototype.hasOwnProperty.call(n[t],o)?n[t][o]:null})}),{version:2,modes:e,enabled:{equalizer:r,noiseReduction:l,noiseBlanker:a,humFilter:u,compressor:s,speechExpander:d,outputLimiter:p,autoNotch:c,loudness:h,aiSpeechEnhancement:m,aiEngine:m?X.engine:"none"},visualization:{graph:"true"===localStorage.getItem("openwebrx-audio-filter-show-graph"),inputSpectrum:g,outputSpectrum:f}}}var x=document.createElement("button");x.textContent="Export Settings",x.style.cssText="width: 100%; margin-bottom: 5px; height: 24px; background: #444; color: #fff; border: none; border-radius: 3px; cursor: pointer; user-select: none; -webkit-user-select: none;",x.onclick=function(){var e="data:text/json;charset=utf-8,"+encodeURIComponent(JSON.stringify(o(),null,2)),n=document.createElement("a");n.setAttribute("href",e),n.setAttribute("download","audio_filter_settings.json"),document.body.appendChild(n),n.click(),n.remove(),t.remove()},t.appendChild(x);var k=document.createElement("button");k.textContent="Import Settings",k.style.cssText="width: 100%; height: 24px; background: #444; color: #fff; border: none; border-radius: 3px; cursor: pointer; user-select: none; -webkit-user-select: none;",k.onclick=function(){var n=document.createElement("input");n.type="file",n.accept=".json",n.onchange=function(n){var t=n.target.files[0];if(t){var o=new FileReader;o.onload=function(n){try{var t=JSON.parse(n.target.result),o=t&&t.modes?t.modes:t;if(o&&(o.ssb||o.am)){w=Object.assign({ssb:y(),am:y(),cw:y(),nfm:y(),wfm:y(),digital:y()},o),localStorage.setItem("openwebrx-audio-filter-settings",JSON.stringify(w)),t.enabled&&(r=!!t.enabled.equalizer,l=!!t.enabled.noiseReduction,a=!!t.enabled.noiseBlanker,u=!!t.enabled.humFilter,s=!!t.enabled.compressor,d=!!t.enabled.speechExpander,p=!!t.enabled.outputLimiter,c=!!t.enabled.autoNotch,h=!!t.enabled.loudness,m=!!t.enabled.aiSpeechEnhancement,X.engine=t.enabled.aiEngine&&"none"!==t.enabled.aiEngine?t.enabled.aiEngine:"dtln","df"===X.engine&&(X.engine="dtln"),X.enabled=m,localStorage.setItem("openwebrx-audio-filter-enabled",r),localStorage.setItem("openwebrx-audio-filter-nr",l),localStorage.setItem("openwebrx-audio-filter-declick",a),localStorage.setItem("openwebrx-audio-filter-hum",u),localStorage.setItem("openwebrx-audio-filter-compressor",s),localStorage.setItem("openwebrx-audio-filter-expander",d),localStorage.setItem("openwebrx-audio-filter-limiter",p),localStorage.setItem("openwebrx-audio-filter-autonotch",c),localStorage.setItem("openwebrx-audio-filter-loudness",h),localStorage.setItem("openwebrx-audio-filter-ai-engine",m?X.engine:"none"),m&&(Y(),te())),t.visualization&&(g=!!t.visualization.inputSpectrum,f=!!t.visualization.outputSpectrum,localStorage.setItem("openwebrx-audio-filter-show-graph",!!t.visualization.graph),localStorage.setItem("openwebrx-audio-filter-show-in-spec",g),localStorage.setItem("openwebrx-audio-filter-show-out-spec",f));let e=F(i);w[e]&&(v=JSON.parse(JSON.stringify(w[e]))),Fe(),Me()}else alert("Invalid settings file.")}catch(n){console.error(`[${e}] Error importing settings:`,n),alert("Error importing settings: "+n.message)}},o.readAsText(t)}},n.click(),t.remove()},t.appendChild(k)})},C.appendChild(H);var G=document.createElement("div");G.style.cssText="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 40px; cursor: pointer; background: #222; border-radius: 4px; border: 1px solid #444; height: 32px; user-select: none; -webkit-user-select: none;",G.title="Show Visualizer";var O=document.createElement("span");O.textContent="Graph",O.style.cssText="font-size: 9px; color: #ccc; line-height: 10px; margin-bottom: 1px;";var z=document.createElement("input");z.type="checkbox",z.id="audio-filter-graph-check",z.style.cursor="pointer",z.style.margin="0","true"===localStorage.getItem("openwebrx-audio-filter-show-graph")&&(z.checked=!0),G.appendChild(O),G.appendChild(z),G.onclick=function(e){e.target!==z&&(z.checked=!z.checked,z.onchange&&z.onchange())},C.appendChild(G),x.appendChild(C);var Q=document.createElement("div");Q.id="audio-filter-main-graph",Q.style.cssText="display: none; margin-top: 5px; border-top: 1px solid #444; padding-top: 5px;";var Z=document.createElement("canvas");Z.width=350,Z.height=110,Z.style.cssText="background: #181818; border-radius: 3px; border: 1px solid #333; display: block; width: 100%; box-sizing: border-box;",Q.appendChild(Z),x.appendChild(Q);var W,j=Z.getContext("2d"),J=-1,U=-1;Z.addEventListener("click",function(e){var n=Z.getBoundingClientRect(),t=e.clientX-n.left,o=e.clientY-n.top;t>=5&&t<=30&&o>=2&&o<=14&&(g=!g,localStorage.setItem("openwebrx-audio-filter-show-in-spec",g)),t>=32&&t<=60&&o>=2&&o<=14&&(f=!f,localStorage.setItem("openwebrx-audio-filter-show-out-spec",f))}),Z.addEventListener("mousemove",function(e){var n=Z.getBoundingClientRect();J=e.clientX-n.left,U=e.clientY-n.top,Z.style.cursor=J>=5&&J<=30&&U>=2&&U<=14||J>=32&&J<=60&&U>=2&&U<=14?"pointer":"default"}),Z.addEventListener("mouseleave",function(){J=-1,U=-1,Z.style.cursor="default"}),window.startMainGraphLoop=function(){W&&cancelAnimationFrame(W);let n=0;requestAnimationFrame(function t(o){var i=document.getElementById("plugin-window-"+e),r=document.getElementById("audio-filter-floating-panel"),a=!1;i?a="undefined"!=typeof $?$(i).is(":visible"):"none"!==i.style.display:r&&(a="none"!==r.style.display),z.checked&&a&&(document.hidden||(W=requestAnimationFrame(t),o-n>=40&&(n=o,he(j,Z.width,Z.height,J))))})},document.addEventListener("visibilitychange",function(){var n=document.getElementById("plugin-window-"+e),t=document.getElementById("audio-filter-floating-panel"),o=!1;n?o="undefined"!=typeof $?$(n).is(":visible"):"none"!==n.style.display:t&&(o="none"!==t.style.display),!document.hidden&&z.checked&&o&&startMainGraphLoop()}),z.onchange=function(){localStorage.setItem("openwebrx-audio-filter-show-graph",z.checked),z.checked?(Q.style.display="block",startMainGraphLoop()):(Q.style.display="none",W&&cancelAnimationFrame(W))},z.checked&&(Q.style.display="block"),o.appendChild(x)}function ye(){if("undefined"!=typeof UI&&UI.getDemodulator){var e=UI.getDemodulator();if(e&&"function"==typeof e.get_modulation)return e.get_modulation()}return"ssb"}function ve(){let e=ye();if(e&&e!==i){let n=F(i);w[n]=JSON.parse(JSON.stringify(v)),i=e,l&&t.reset_nr&&t.reset_nr(),X.enabled&&X.ready&&Y();let o=F(e);v=w[o]?JSON.parse(JSON.stringify(w[o])):y(),Fe(),k()}}function we(){return"ssb"===F(i)?{dtlnFloor:.3,dtlnMix:.65,rnTarget:.3,rnBoost:40,rnMix:.3}:{dtlnFloor:.15,dtlnMix:.85,rnTarget:.7,rnBoost:60,rnMix:.85}}function Fe(){let e,o,c,m,g,f,x,b,y,w,k={},C=F(i),S=n[C];const _=we();b=null!==v.notchQ&&void 0!==v.notchQ?v.notchQ:S.notchQ||30;let E=null!==v.airGain&&void 0!==v.airGain?v.airGain:void 0!==S.airGain?S.airGain:0,P=null!==v.airFreq&&void 0!==v.airFreq?v.airFreq:void 0!==S.airFreq?S.airFreq:12e3;y=null!==v.compHPF&&void 0!==v.compHPF?v.compHPF:S.compHPF||300,w=null!==v.compLPF&&void 0!==v.compLPF?v.compLPF:S.compLPF||3e3;let T={enabled:l,gain:null!==v.nr_gain&&void 0!==v.nr_gain?v.nr_gain:S.nr_gain||0,alpha:null!==v.nr_alpha&&void 0!==v.nr_alpha?v.nr_alpha:S.nr_alpha||.95,snr:null!==v.nr_snr&&void 0!==v.nr_snr?v.nr_snr:S.nr_snr||10,comb:null!==v.nr_comb&&void 0!==v.nr_comb?v.nr_comb:void 0!==S.nr_comb?S.nr_comb:.5,speech_mode:null!==v.nr_speech_mode&&void 0!==v.nr_speech_mode?v.nr_speech_mode:void 0!==S.nr_speech_mode&&S.nr_speech_mode};if(k={nb_enabled:a,comp_enabled:s,expander_enabled:d,expanderThresholdDb:null!==v.expanderThresholdDb&&void 0!==v.expanderThresholdDb?v.expanderThresholdDb:-52,expanderFloorDb:null!==v.expanderFloorDb&&void 0!==v.expanderFloorDb?v.expanderFloorDb:-18,expanderRatio:null!==v.expanderRatio&&void 0!==v.expanderRatio?v.expanderRatio:1.8,limiter_enabled:p,limiterCeilingDb:null!==v.limiterCeilingDb&&void 0!==v.limiterCeilingDb?v.limiterCeilingDb:-1,agcTarget:S.agcTarget,maxBoost:null!==v.maxBoost&&void 0!==v.maxBoost?v.maxBoost:S.maxBoost,gateThresh:null!==v.gateThresh&&void 0!==v.gateThresh?v.gateThresh:.0025,hangTime:null!==v.hangTime&&void 0!==v.hangTime?v.hangTime:.2,recoveryTime:null!==v.recoveryTime&&void 0!==v.recoveryTime?v.recoveryTime:.5,compGain:null!==v.compGain&&void 0!==v.compGain?v.compGain:.1,sampleRate:t.gain?t.gain.context.sampleRate:48e3},r)e=S,o=null!==v.highpassFreq?v.highpassFreq:e.highpassFreq,c=null!==v.lowpassFreq?v.lowpassFreq:e.lowpassFreq,m=null!==v.peakingGain?v.peakingGain:e.peakingGain||0,g=null!==v.peakingFreq&&void 0!==v.peakingFreq?v.peakingFreq:e.peakingFreq||2e3,f=null!==v.peakingQ&&void 0!==v.peakingQ?v.peakingQ:e.peakingQ||1,x=e.gain;else{let n=22e3;t.lowpass&&t.lowpass.context&&(n=t.lowpass.context.sampleRate/2-100),e={gain:1},o=0,c=n,m=0,x=1,g=2e3,f=1,l&&"am"===F(i)&&(m=6,g=500,f=1)}t.dynamicsSettings=k,t.nrSettings=T,X.gainDb=null!==v.dtln_gain&&void 0!==v.dtln_gain?v.dtln_gain:0,X.maskFloor=null!==v.dtln_floor&&void 0!==v.dtln_floor?v.dtln_floor:_.dtlnFloor,X.presence="dtln"===X.engine?null!==v.dtln_presence&&void 0!==v.dtln_presence?v.dtln_presence:.3:0,X.wetMix=null!==v.dtln_mix&&void 0!==v.dtln_mix?v.dtln_mix:_.dtlnMix,X.rnTarget=null!==v.rn_target&&void 0!==v.rn_target?v.rn_target:_.rnTarget,X.rnMaxBoost=null!==v.rn_boost&&void 0!==v.rn_boost?v.rn_boost:_.rnBoost,X.rnWetMix=null!==v.rn_mix&&void 0!==v.rn_mix?v.rn_mix:_.rnMix;const M=null!==v.humFrequency&&void 0!==v.humFrequency?v.humFrequency:50,I=null!==v.humHarmonics&&void 0!==v.humHarmonics?v.humHarmonics:4;window.AudioFilterModules.humFilter.apply(t.humFilters,u,M,I,t.gain?t.gain.context.sampleRate:48e3);const A=Object.assign({},k,T);[t.nbProcessor,t.nrProcessor,t.compProcessor,t.expanderProcessor,t.limiterProcessor].forEach(function(e){e&&e.port&&e.port.postMessage({type:"settings",value:A})});let q=s?E:0;!r&&l&&"am"===F(i)&&(q=5),window.AudioFilterModules.equalizer.apply(t,{highpass:o,lowpass:c,gain:x,loudnessGain:r&&h||l&&"am"===F(i)?12:0,updatePeaking:r||l&&"am"===F(i),peakingFreq:g,peakingQ:f,peakingGain:m,airGain:q,airFreq:P}),t.compHighpass&&t.compLowpass&&(s?(t.compHighpass.frequency.value=y,t.compLowpass.frequency.value=w):(t.compHighpass.frequency.value=0,t.compLowpass.frequency.value=t.compLowpass.context.sampleRate/2-100)),t.notches&&window.AudioFilterModules.autoNotch.setSharpness(t.notches,b)}function ke(){t.analyser&&c&&window.AudioFilterModules.autoNotch.process(t.analyser,t.notches,v,t)}function Ce(e,n,t,o,i){var r=document.getElementById(e);r&&r.remove();var a=document.createElement("div");if(a.id=e,a.style.cssText="position: fixed; background: #222; border: 1px solid #444; color: #eee; z-index: 10001; border-radius: 4px; padding: 10px; font-family: sans-serif; font-size: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.5); width: "+o+"px; visibility: hidden;",n){var l=document.createElement("div");l.textContent=n,l.style.cssText="font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #444; padding-bottom: 5px;",a.appendChild(l)}i(a);var s=function(e){a.contains(e.target)||(a.remove(),document.removeEventListener("mousedown",s),document.removeEventListener("touchstart",s))};setTimeout(function(){document.addEventListener("mousedown",s),document.addEventListener("touchstart",s)},10),document.body.appendChild(a);var c=a.offsetHeight,u=a.offsetWidth,d=t.left;d+u>window.innerWidth-5&&(d=t.right-u),d<5&&(d=5),t.top<c+10?a.style.top=t.bottom+5+"px":a.style.bottom=window.innerHeight-t.top+5+"px",a.style.left=d+"px",a.style.visibility="visible"}function Se(e,n,t,o,i,r,a,l){const s=null!==v[t]&&void 0!==v[t]?v[t]:a,c=document.createElement("div");c.style.marginBottom="8px";const u=document.createElement("div"),d=l||function(e){return Number(e).toFixed(1)};u.textContent=n+": "+d(s),u.style.marginBottom="2px";const p=document.createElement("input");p.type="range",p.min=o,p.max=i,p.step=r,p.value=s,p.style.width="100%",p.oninput=function(){const e=parseFloat(p.value);u.textContent=n+": "+d(e),v[t]=e,Fe()},p.onchange=k,c.appendChild(u),c.appendChild(p),e.appendChild(c)}function _e(e){Ce("audio-filter-comp-menu","Compressor Settings",e,220,function(t){function o(e,t,o,r,a,l,s){var c=document.createElement("div");c.style.marginBottom="8px";var u=n[F(i)][t];if(void 0===u)switch(t){case"gateThresh":u=.0025;break;case"hangTime":u=.2;break;case"recoveryTime":u=.5;break;case"compGain":u=.1;break;case"airGain":default:u=0;break;case"airFreq":u=12e3}var d=null!==v[t]&&void 0!==v[t]?v[t]:u,p=document.createElement("div"),h=void 0!==s?s:l?0:2;p.textContent=e+": "+(d*(l||1)).toFixed(h),p.style.marginBottom="2px";var m=document.createElement("input");return m.type="range",m.min=o,m.max=r,m.step=a,m.value=d,m.style.width="100%",m.oninput=function(){var n=parseFloat(m.value);p.textContent=e+": "+(n*(l||1)).toFixed(h),v[t]=n,Fe()},m.onchange=function(){k()},c.appendChild(p),c.appendChild(m),c}function r(e,n,t,o,i,r){var a=document.createElement("div");a.style.marginBottom="8px";var l=document.createElement("div");l.textContent=e+": "+Math.round(i)+"Hz",l.style.marginBottom="2px";var s=document.createElement("input");return s.type="range",s.min=n,s.max=t,s.step=o,s.value=i,s.style.width="100%",s.oninput=function(){var n=parseFloat(s.value);l.textContent=e+": "+Math.round(n)+"Hz",r(n)},s.onchange=function(){k()},a.appendChild(l),a.appendChild(s),{element:a,setRange:function(e,n){s.min=e,s.max=n},setValue:function(n){s.value=n,l.textContent=e+": "+Math.round(n)+"Hz"}}}var a=document.createElement("div");a.textContent="Equalizer (Air)",a.style.cssText="font-size: 10px; color: #aaa; margin-bottom: 5px; font-weight: 600;",t.appendChild(a),t.appendChild(o("Air Gain (dB)","airGain",0,20,.5));var l=document.createElement("div");l.style.cssText="border-bottom: 1px solid #444; margin: 8px 0;",t.appendChild(l),t.appendChild(o("Max Boost","maxBoost",1,50,1)),t.appendChild(o("Gate Threshold","gateThresh",0,.02,5e-4,null,4)),t.appendChild(o("Hang Time (s)","hangTime",0,2,.1)),t.appendChild(o("Recovery (s)","recoveryTime",.1,5,.1)),t.appendChild(o("Comp Volume","compGain",.05,1,.01));let s,c=F(i),u=n[c],d=null!==v.compHPF&&void 0!==v.compHPF?v.compHPF:u.compHPF||300,p=null!==v.compLPF&&void 0!==v.compLPF?v.compLPF:u.compLPF||3e3,h=(d+p)/2,m=p-d,g=50+m/2,f=8e3-m/2;function x(e,n){m=Math.max(100,Math.min(7500,n)),g=50+m/2,f=8e3-m/2,h=Math.max(g,Math.min(f,e));let t=h-m/2,o=h+m/2;v.compHPF=t,v.compLPF=o,v.airFreq=o,s&&(s.setRange(g,f),s.setValue(h)),Fe()}s=r("Comp Center",g,f,50,h,function(e){x(e,m)}),t.appendChild(s.element);const b=r("Comp Width",100,7500,50,m,function(e){x(h,e)});t.appendChild(b.element);var y=document.createElement("button");y.textContent="Default",y.style.cssText="margin-top: 5px; width: 100%; height: 24px; background: #444; color: #fff; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; user-select: none; -webkit-user-select: none;",y.onclick=function(){v.maxBoost=null,v.gateThresh=null,v.hangTime=null,v.recoveryTime=null,v.compGain=null,v.compHPF=null,v.compLPF=null,v.airGain=null,v.airFreq=null,k(),Fe(),t.remove(),_e(e)},t.appendChild(y)})}function Ee(e){Ce("audio-filter-dtln-menu","AI Speech Enhancement (DTLN)",e,220,function(n){const t=we();var o=document.createElement("div");o.style.cssText="font-size: 10px; color: #aaa; margin-bottom: 8px;",o.textContent=X.ready&&"dtln"===X.readyEngine?"Model loaded.":X.loading?"Model loading...":"Model will load when enabled.",n.appendChild(o);var r=null!==v.dtln_gain&&void 0!==v.dtln_gain?v.dtln_gain:0,a=document.createElement("div");a.textContent="Output Gain: "+r.toFixed(1)+" dB",a.style.marginBottom="2px";var l=document.createElement("input");l.type="range",l.min=-12,l.max=24,l.step=.5,l.value=r,l.style.width="100%",l.oninput=function(){var e=parseFloat(l.value);a.textContent="Output Gain: "+e.toFixed(1)+" dB",v.dtln_gain=e,Fe()},l.onchange=function(){k()},n.appendChild(a),n.appendChild(l);var s=null!==v.dtln_floor&&void 0!==v.dtln_floor?v.dtln_floor:t.dtlnFloor,c=document.createElement("div");c.textContent="Speech Floor: "+Math.round(100*s)+"%",c.style.cssText="margin-top: 8px; margin-bottom: 2px;";var u=document.createElement("input");u.type="range",u.min=0,u.max=.6,u.step=.01,u.value=s,u.style.width="100%",u.oninput=function(){var e=parseFloat(u.value);c.textContent="Speech Floor: "+Math.round(100*e)+"%",v.dtln_floor=e,Fe()},u.onchange=function(){k()},n.appendChild(c),n.appendChild(u);var d=null!==v.dtln_mix&&void 0!==v.dtln_mix?v.dtln_mix:t.dtlnMix,p=document.createElement("div");p.textContent="Intensity (Wet/Dry): "+Math.round(100*d)+"%",p.style.cssText="margin-top: 8px; margin-bottom: 2px;";var h=document.createElement("input");h.type="range",h.min=.2,h.max=1,h.step=.01,h.value=d,h.style.width="100%",h.oninput=function(){var e=parseFloat(h.value);p.textContent="Intensity (Wet/Dry): "+Math.round(100*e)+"%",v.dtln_mix=e,Fe()},h.onchange=function(){k()},n.appendChild(p),n.appendChild(h);var m=null!==v.dtln_presence&&void 0!==v.dtln_presence?v.dtln_presence:.3,g=document.createElement("div");g.textContent="Clarity/Presence: "+m.toFixed(2),g.style.cssText="margin-top: 8px; margin-bottom: 2px;";var f=document.createElement("input");f.type="range",f.min=0,f.max="ssb"===F(i)?3:1.5,f.step=.05,f.value=m,f.style.width="100%",f.oninput=function(){var e=parseFloat(f.value);g.textContent="Clarity/Presence: "+e.toFixed(2),v.dtln_presence=e,Fe()},f.onchange=function(){k()},n.appendChild(g),n.appendChild(f);var x=document.createElement("button");x.textContent="Default",x.style.cssText="margin-top: 10px; width: 100%; height: 24px; background: #444; color: #fff; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; user-select: none; -webkit-user-select: none;",x.onclick=function(){v.dtln_gain=null,v.dtln_floor=null,v.dtln_presence=null,v.dtln_mix=null,k(),Fe(),n.remove(),Ee(e)},n.appendChild(x)})}function Pe(e){Ce("audio-filter-rnnoise-menu","AI Speech Enhancement (RNNoise)",e,220,function(n){const t=we();var o=document.createElement("div");o.style.cssText="font-size: 10px; color: #aaa; margin-bottom: 8px;",o.textContent=X.ready&&"rnnoise"===X.readyEngine?"Model loaded.":X.loading?"Model loading...":"Model will load when enabled.",n.appendChild(o);var i=null!==v.dtln_gain&&void 0!==v.dtln_gain?v.dtln_gain:0,r=document.createElement("div");r.textContent="Output Gain: "+i.toFixed(1)+" dB",r.style.marginBottom="2px";var a=document.createElement("input");function l(e,t,o,i,r,a,l){var s=null!==v[t]&&void 0!==v[t]?v[t]:a,c=document.createElement("div");c.textContent=e+": "+l(s),c.style.cssText="margin-top: 8px; margin-bottom: 2px;";var u=document.createElement("input");u.type="range",u.min=o,u.max=i,u.step=r,u.value=s,u.style.width="100%",u.oninput=function(){var n=parseFloat(u.value);c.textContent=e+": "+l(n),v[t]=n,Fe()},u.onchange=function(){k()},n.appendChild(c),n.appendChild(u)}a.type="range",a.min=-12,a.max=24,a.step=.5,a.value=i,a.style.width="100%",a.oninput=function(){var e=parseFloat(a.value);r.textContent="Output Gain: "+e.toFixed(1)+" dB",v.dtln_gain=e,Fe()},a.onchange=function(){k()},n.appendChild(r),n.appendChild(a),l("Speech Level","rn_target",.1,1,.05,t.rnTarget,function(e){return Math.round(100*e)+"%"}),l("Max Boost","rn_boost",6,80,1,t.rnBoost,function(e){return Math.round(20*Math.log10(e))+" dB"}),l("Speech Preserve","rn_mix",.3,1,.05,t.rnMix,function(e){return Math.round(100*(1-e))+"%"});var s=document.createElement("button");s.textContent="Default",s.style.cssText="margin-top: 10px; width: 100%; height: 24px; background: #444; color: #fff; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; user-select: none; -webkit-user-select: none;",s.onclick=function(){v.dtln_gain=null,v.rn_target=null,v.rn_boost=null,v.rn_mix=null,k(),Fe(),n.remove(),Pe(e)},n.appendChild(s)})}function Te(e){Ce("audio-filter-notch-menu","Notch Settings",e,200,function(t){function o(e,t,o,r,a){var l=document.createElement("div");l.style.marginBottom="8px";var s=n[F(i)][t];if(void 0===s)if("maxNotches"===t)s=4;else if("notchRange"===t)s=4e3;else if("notchCenter"===t){s=(null!==v.notchRange&&void 0!==v.notchRange?v.notchRange:4e3)/2}else s=30;var c=null!==v[t]&&void 0!==v[t]?v[t]:s,u=document.createElement("div");u.textContent=e+": "+c,u.style.marginBottom="2px";var d=document.createElement("input");return d.type="range",d.min=o,d.max=r,d.step=a,d.value=c,d.style.width="100%",d.oninput=function(){var n=parseFloat(d.value);u.textContent=e+": "+n,v[t]=n,Fe()},d.onchange=function(){k()},l.appendChild(u),l.appendChild(d),l}t.appendChild(o("Notch Q (Sharpness)","notchQ",1,50,1)),t.appendChild(o("Max Notches","maxNotches",1,4,1)),t.appendChild(o("Detection Center (Hz)","notchCenter",250,8e3,50)),t.appendChild(o("Detection Width (Hz)","notchRange",500,8e3,100));var r=document.createElement("button");r.textContent="Default",r.style.cssText="margin-top: 5px; width: 100%; height: 24px; background: #444; color: #fff; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; user-select: none; -webkit-user-select: none;",r.onclick=function(){v.notchQ=null,v.maxNotches=null,v.notchRange=null,v.notchCenter=null,k(),t.remove(),Te(e),Fe()},t.appendChild(r)})}function Me(){var n=document.getElementById("plugin-window-"+e),t=document.getElementById("audio-filter-floating-panel"),o=!1;n?o="undefined"!=typeof $?$(n).is(":visible"):"none"!==n.style.display:t&&(o="none"!==t.style.display);var i=r||c||a||u||s||d||p||l||m,h=document.getElementById("plugin-button-"+e);h&&(h.style.color=i?"#39FF14":"");var g=document.getElementById("audio-filter-toggle-btn");g&&(o?(g.style.color="#39FF14",g.style.borderColor="#39FF14"):i?(g.style.color="yellow",g.style.borderColor="yellow"):(g.style.color="#aaa",g.style.borderColor="#666"))}"complete"===document.readyState||"interactive"===document.readyState?setTimeout(de,100):window.addEventListener("load",de),window.AudioFilterPlugin={myname:e,init:de,toggle:fe},"undefined"!=typeof Plugins&&Plugins.audio_filter&&(Plugins.audio_filter.no_css=!0,Plugins.audio_filter._version=1,Plugins.audio_filter.init=function(){return de(),!0})}();
+
+(function() {
+    'use strict';
+
+    const PLUGIN_ID = "audio_filter";
+
+    // Configuration for different modulations
+    const CONFIG = {
+        ssb: {
+            highpassFreq: null,
+            lowpassFreq: 13500,  // Treble optimized for SSB
+            peakingFreq: 521.8739192045387,  // Shifted to 2000Hz for more presence
+            peakingQ: 0.5,
+            peakingGain: 12.87,
+            gain: 0.9,
+            agcTarget: 0.50,
+            maxBoost: 35.0,
+            notchQ: 30,
+            maxNotches: 4,
+            compHPF: 325,
+            compLPF: 1475,
+            nr_gain: 5,         // dB
+            nr_alpha: 0.95,
+            nr_snr: 24,         // dB
+            nr_comb: 0.0,
+            nr_speech_mode: true,
+            airGain: 9.0,
+            airFreq: 1475
+        },
+        am: {
+            highpassFreq: 219,   // (Full warmth for tube sound)
+            lowpassFreq: 13500,  // Treble rolled off (Vintage radio style)
+            peakingFreq: 675.6313495618042,   // Boost low-mids for body/warmth
+            peakingQ: 0.5,
+            peakingGain: 18.48,
+            gain: 0.9,
+            agcTarget: 0.50,
+            maxBoost: 19,
+            notchQ: 30,
+            maxNotches: 4,
+            compHPF: 175,
+            compLPF: 1325,
+            nr_gain: 10,
+            nr_alpha: 0.9723,
+            nr_snr: 26,
+            nr_comb: 0.1,
+            nr_speech_mode: false,
+            airFreq: 1325
+        },
+        cw: {
+            highpassFreq: 300,
+            lowpassFreq: 900,
+            peakingFreq: 600,
+            peakingQ: 3.0,
+            peakingGain: 3.3,
+            gain: 0.9,
+            agcTarget: 0.40,
+            maxBoost: 20.0,
+            notchQ: 40,
+            maxNotches: 4,
+            compHPF: 400,
+            compLPF: 1500,
+            nr_gain: 0,
+            nr_alpha: 0.9800,
+            nr_snr: 30,
+            nr_comb: 0.5,
+            nr_speech_mode: false,
+            airFreq: 1500
+        },
+        nfm: {
+            highpassFreq: 50,
+            lowpassFreq: 11100,
+            peakingFreq: 2500,
+            peakingQ: 0.7,
+            peakingGain: 3.3,
+            gain: 0.9,
+            agcTarget: 0.50,
+            maxBoost: 20.0,
+            notchQ: 30,
+            maxNotches: 4,
+            compHPF: 250,
+            compLPF: 5000,
+            nr_gain: 0,
+            nr_alpha: 0.9800,
+            nr_snr: 30,
+            nr_comb: 0.5,
+            nr_speech_mode: true,
+            airFreq: 5000
+        },
+        wfm: {
+            highpassFreq: 50,
+            lowpassFreq: 11100,
+            peakingFreq: 8000,
+            peakingQ: 0.5,
+            peakingGain: 3.3,
+            gain: 0.9,
+            agcTarget: 0.50,
+            maxBoost: 6.0,
+            notchQ: 30,
+            maxNotches: 4,
+            compHPF: 100,
+            compLPF: 8000,
+            nr_gain: 0,
+            nr_alpha: 0.95,
+            nr_snr: 10,
+            nr_comb: 0.5,
+            nr_speech_mode: false,
+            airFreq: 8000
+        },
+        digital: {
+            highpassFreq: 50,
+            lowpassFreq: 11100,
+            peakingFreq: 2500,
+            peakingQ: 0.7,
+            peakingGain: 3.3,
+            gain: 0.9,
+            agcTarget: 0.50,
+            maxBoost: 20.0,
+            notchQ: 30,
+            maxNotches: 4,
+            compHPF: 50,
+            compLPF: 8000,
+            nr_gain: 0,
+            nr_alpha: 0.95,
+            nr_snr: 10,
+            nr_comb: 0.5,
+            nr_speech_mode: false,
+            airFreq: 8000
+        }
+    };
+
+    // References to filter nodes for updating
+    let activeFilters = {
+        highpass: null,
+        lowpass: null,
+        nbProcessor: null,
+        nrProcessor: null,
+        compProcessor: null,
+        expanderProcessor: null,
+        limiterProcessor: null,
+        loudness: null,
+        air: null,
+        compHighpass: null,
+        compLowpass: null,
+        peaking: null,
+        gain: null,
+        analyser: null,
+        outputAnalyser: null,
+        notches: [],
+        humFilters: []
+    };
+    let analysisBuffer = null;
+    let filterModulesPromise = null;
+    let last_modulation = '';
+    let is_filter_enabled = false;
+    let is_nb_enabled = false;
+    let is_nr_enabled = false;
+    let is_compressor_enabled = false;
+    let is_autonotch_enabled = false;
+    let is_hum_filter_enabled = false;
+    let is_expander_enabled = false;
+    let is_limiter_enabled = false;
+    let is_loudness_enabled = false;
+    let is_dtln_enabled = false;
+    let show_input_spectrum = localStorage.getItem('openwebrx-audio-filter-show-in-spec') !== 'false';
+    let show_output_spectrum = localStorage.getItem('openwebrx-audio-filter-show-out-spec') !== 'false';
+    let is_initialized = false;
+
+    const SETTING_KEYS = [
+        'highpassFreq', 'lowpassFreq', 'peakingGain', 'peakingFreq', 'peakingQ', 'gain',
+        'agcTarget', 'maxBoost', 'gateThresh', 'hangTime', 'recoveryTime', 'compGain',
+        'notchQ', 'maxNotches', 'notchRange', 'notchCenter', 'compHPF', 'compLPF',
+        'airGain', 'airFreq', 'nr_gain', 'nr_alpha', 'nr_snr', 'nr_comb', 'nr_speech_mode',
+        'dtln_gain', 'dtln_floor', 'dtln_presence', 'dtln_mix', 'rn_target', 'rn_boost', 'rn_mix',
+        'humFrequency', 'humHarmonics', 'expanderThresholdDb', 'expanderFloorDb', 'expanderRatio', 'limiterCeilingDb'
+    ];
+
+    function create_empty_settings() {
+        return SETTING_KEYS.reduce((acc, key) => { acc[key] = null; return acc; }, {});
+    }
+
+    let override_settings = create_empty_settings();
+
+    let settings_store = {
+        ssb: create_empty_settings(),
+        am: create_empty_settings(),
+        cw: create_empty_settings(),
+        nfm: create_empty_settings(),
+        wfm: create_empty_settings(),
+        digital: create_empty_settings()
+    };
+
+    function get_config_mode(mod) {
+        if (!mod) return 'ssb';
+        mod = String(mod).toLowerCase();
+        if (mod === 'am') return 'am';
+        if (mod === 'cw') return 'cw';
+        if (mod === 'nfm' || mod === 'fm') return 'nfm';
+        if (mod === 'wfm') return 'wfm';
+        if (['dmr', 'ysf', 'dstar', 'nxdn', 'm17', 'p25', 'freedv'].includes(mod)) return 'digital';
+        return 'ssb'; // lsb, usb, etc.
+    }
+
+    function saveSettings() {
+        let modKey = get_config_mode(last_modulation);
+        settings_store[modKey] = JSON.parse(JSON.stringify(override_settings));
+        localStorage.setItem('openwebrx-audio-filter-settings', JSON.stringify(settings_store));
+    }
+
+    const originalConnect = AudioNode.prototype.connect;
+
+    AudioNode.prototype.connect = function(destination, output, input) {
+        const isAudioDestination = destination && destination.context &&
+            destination === destination.context.destination;
+        if (isAudioDestination) {
+            let ctx = destination.context;
+
+            if (!activeFilters.highpass || activeFilters.highpass.context !== ctx) {
+                setupFilters(ctx);
+            }
+
+            if (!this.isCustomFilter) {
+                return originalConnect.call(this, activeFilters.inputProxy, output, input);
+            }
+        }
+        return originalConnect.apply(this, arguments);
+    };
+
+    const FFT_SIZE = 1024;
+    const bitRev = new Uint16Array(FFT_SIZE);
+    const cosTable = new Float32Array(FFT_SIZE / 2);
+    const sinTable = new Float32Array(FFT_SIZE / 2);
+    const fft_win = new Float32Array(FFT_SIZE);
+
+    (function initFFT() {
+        let m = 0, temp = FFT_SIZE;
+        while (temp > 1) { temp >>= 1; m++; }
+        for (let i = 0; i < FFT_SIZE; i++) {
+            let j = 0, k = i;
+            for (let l = 0; l < m; l++) { j = (j << 1) | (k & 1); k >>= 1; }
+            bitRev[i] = j;
+        }
+        for (let i = 0; i < FFT_SIZE / 2; i++) {
+            const theta = -2 * Math.PI * i / FFT_SIZE;
+            cosTable[i] = Math.cos(theta);
+            sinTable[i] = Math.sin(theta);
+        }
+        for(let i=0; i<FFT_SIZE; i++) fft_win[i] = Math.sin(Math.PI * i / FFT_SIZE);
+    })();
+
+    function performFFT(real, imag, inverse) {
+        for (let i = 0; i < FFT_SIZE; i++) {
+            const j = bitRev[i];
+            if (i < j) {
+                const tr = real[i]; real[i] = real[j]; real[j] = tr;
+                const ti = imag[i]; imag[i] = imag[j]; imag[j] = ti;
+            }
+        }
+        let halfSize = 1;
+        while (halfSize < FFT_SIZE) {
+            const step = FFT_SIZE / (2 * halfSize);
+            for (let i = 0; i < FFT_SIZE; i += 2 * halfSize) {
+                for (let k = 0, tIdx = 0; k < halfSize; k++, tIdx += step) {
+                    const t_cos = cosTable[tIdx];
+                    const t_sin = inverse ? -sinTable[tIdx] : sinTable[tIdx];
+                    const j = i + k + halfSize;
+                    const tr = t_cos * real[j] - t_sin * imag[j];
+                    const ti = t_cos * imag[j] + t_sin * real[j];
+                    real[j] = real[i + k] - tr;
+                    imag[j] = imag[i + k] - ti;
+                    real[i + k] += tr;
+                    imag[i + k] += ti;
+                }
+            }
+            halfSize <<= 1;
+        }
+        if (inverse) {
+            const invSize = 1.0 / FFT_SIZE;
+            for (let i = 0; i < FFT_SIZE; i++) { real[i] *= invSize; imag[i] *= invSize; }
+        }
+    }
+
+    const DTLN_BLOCK = 512;
+    const DTLN_HOP = 128;
+    const DTLN_RATE = 16000;
+    const DTLN_RING_SIZE = 65536;
+    const DTLN_STATE_LEN = 1 * 2 * 128 * 2;
+    const RNNOISE_FRAME = 480;
+
+    const dtlnBitRev = new Uint16Array(DTLN_BLOCK);
+    const dtlnCos = new Float32Array(DTLN_BLOCK / 2);
+    const dtlnSin = new Float32Array(DTLN_BLOCK / 2);
+    const dtlnReal = new Float32Array(DTLN_BLOCK);
+    const dtlnImag = new Float32Array(DTLN_BLOCK);
+    const dtlnMag = new Float32Array(DTLN_BLOCK / 2 + 1);
+    const dtlnPhase = new Float32Array(DTLN_BLOCK / 2 + 1);
+
+    (function initDtlnFFT() {
+        let m = 0, temp = DTLN_BLOCK;
+        while (temp > 1) { temp >>= 1; m++; }
+        for (let i = 0; i < DTLN_BLOCK; i++) {
+            let j = 0, k = i;
+            for (let l = 0; l < m; l++) { j = (j << 1) | (k & 1); k >>= 1; }
+            dtlnBitRev[i] = j;
+        }
+        for (let i = 0; i < DTLN_BLOCK / 2; i++) {
+            const theta = -2 * Math.PI * i / DTLN_BLOCK;
+            dtlnCos[i] = Math.cos(theta);
+            dtlnSin[i] = Math.sin(theta);
+        }
+    })();
+
+    function dtlnFFT(real, imag, inverse) {
+        for (let i = 0; i < DTLN_BLOCK; i++) {
+            const j = dtlnBitRev[i];
+            if (i < j) {
+                const tr = real[i]; real[i] = real[j]; real[j] = tr;
+                const ti = imag[i]; imag[i] = imag[j]; imag[j] = ti;
+            }
+        }
+        let halfSize = 1;
+        while (halfSize < DTLN_BLOCK) {
+            const step = DTLN_BLOCK / (2 * halfSize);
+            for (let i = 0; i < DTLN_BLOCK; i += 2 * halfSize) {
+                for (let k = 0, tIdx = 0; k < halfSize; k++, tIdx += step) {
+                    const t_cos = dtlnCos[tIdx];
+                    const t_sin = inverse ? -dtlnSin[tIdx] : dtlnSin[tIdx];
+                    const j = i + k + halfSize;
+                    const tr = t_cos * real[j] - t_sin * imag[j];
+                    const ti = t_cos * imag[j] + t_sin * real[j];
+                    real[j] = real[i + k] - tr;
+                    imag[j] = imag[i + k] - ti;
+                    real[i + k] += tr;
+                    imag[i + k] += ti;
+                }
+            }
+            halfSize <<= 1;
+        }
+        if (inverse) {
+            const invSize = 1.0 / DTLN_BLOCK;
+            for (let i = 0; i < DTLN_BLOCK; i++) { real[i] *= invSize; imag[i] *= invSize; }
+        }
+    }
+
+    const RESAMPLE_A = 3;
+    const RESAMPLE_PHASES = 256;
+    const RESAMPLE_TAPS = 2 * RESAMPLE_A;
+    const resampleKernel = new Float32Array(RESAMPLE_PHASES * RESAMPLE_TAPS);
+    (function initResampleKernel() {
+        function lanczos(x) {
+            if (x === 0) return 1;
+            if (x <= -RESAMPLE_A || x >= RESAMPLE_A) return 0;
+            const px = Math.PI * x;
+            return RESAMPLE_A * Math.sin(px) * Math.sin(px / RESAMPLE_A) / (px * px);
+        }
+        for (let p = 0; p < RESAMPLE_PHASES; p++) {
+            const frac = p / RESAMPLE_PHASES;
+            for (let t = 0; t < RESAMPLE_TAPS; t++) {
+                const k = t - RESAMPLE_A + 1;
+                resampleKernel[p * RESAMPLE_TAPS + t] = lanczos(frac - k);
+            }
+        }
+    })();
+
+    function createResampler(ratio) {
+        let history = [];
+        let pos = RESAMPLE_A - 1;
+        return function (input) {
+            for (let i = 0; i < input.length; i++) history.push(input[i]);
+            const output = [];
+            while (true) {
+                const idx = Math.floor(pos);
+                if (idx + RESAMPLE_A >= history.length || idx - RESAMPLE_A + 1 < 0) break;
+                const frac = pos - idx;
+                const phase = Math.min(RESAMPLE_PHASES - 1, Math.floor(frac * RESAMPLE_PHASES));
+                const base = idx - RESAMPLE_A + 1;
+                const koff = phase * RESAMPLE_TAPS;
+                let acc = 0;
+                for (let t = 0; t < RESAMPLE_TAPS; t++) acc += history[base + t] * resampleKernel[koff + t];
+                output.push(acc);
+                pos += ratio;
+            }
+            const minNeeded = Math.floor(pos) - RESAMPLE_A + 1;
+            if (minNeeded > 0) {
+                history.splice(0, minNeeded);
+                pos -= minNeeded;
+            }
+            return output;
+        };
+    }
+
+    let dtln = {
+        enabled: false,
+        loading: false,
+        ready: false,
+        engine: null,
+        readyEngine: null,
+        basePath: null,
+        ctxRate: 48000,
+        gainDb: 0,
+        maskFloor: 0.15,
+        presence: 0.3,
+        presenceState: 0,
+        wetMix: 0.85,
+        rnTarget: 0.7,
+        rnMaxBoost: 60,
+        rnWetMix: 0.85,
+        rnDry: [],
+        aiEnvelope: 0.01,
+        aiLastGain: 1,
+        rnVadProbability: 0,
+        rnVadHangFrames: 0,
+        session1: null,
+        session2: null,
+        state1: null,
+        state2: null,
+        rnLoaded: false,
+        winBuf: new Float32Array(DTLN_BLOCK),
+        outBuf: new Float32Array(DTLN_BLOCK),
+        pending16k: [],
+        pendingOut16k: [],
+        dryDelay: null,
+        resampleIn: null,
+        resampleOut: null,
+        inRing: null, inHead: 0, inTail: 0, inCount: 0,
+        outRing: null, outHead: 0, outTail: 0, outCount: 0,
+        pumpTimer: null,
+        outputSink: null,
+        ioPort: null,
+        buttons: {}
+    };
+
+    function ai_rate() {
+        return dtln.engine === 'dtln' ? DTLN_RATE : 48000;
+    }
+    function ai_frame_size() {
+        if (dtln.engine === 'rnnoise') return RNNOISE_FRAME;
+        return DTLN_HOP;
+    }
+
+    function dtln_reset_runtime() {
+        dtln.winBuf.fill(0);
+        dtln.outBuf.fill(0);
+        dtln.pending16k = [];
+        dtln.pendingOut16k = [];
+        dtln.presenceState = 0;
+        dtln.dryDelay = new Array(DTLN_BLOCK - DTLN_HOP).fill(0);
+        if (dtln.state1) dtln.state1.fill(0);
+        if (dtln.state2) dtln.state2.fill(0);
+        const rate = ai_rate();
+        dtln.resampleIn = createResampler(dtln.ctxRate / rate);
+        dtln.resampleOut = createResampler(rate / dtln.ctxRate);
+        dtln.inHead = dtln.inTail = dtln.inCount = 0;
+        dtln.outHead = dtln.outTail = dtln.outCount = 0;
+        dtln.aiEnvelope = 0.01;
+        dtln.aiLastGain = 1;
+        dtln.rnVadProbability = 0;
+        dtln.rnVadHangFrames = 0;
+        dtln.rnDry = [];
+        if (dtln.ioPort) dtln.ioPort.postMessage({ type: 'reset' });
+    }
+
+    function dtln_get_base_path() {
+        const scripts = document.getElementsByTagName('script');
+        for (let i = 0; i < scripts.length; i++) {
+            const src = scripts[i].src;
+            if (src && /audio_filter\.js(\?.*)?$/.test(src)) return src.replace(/[^\/]+$/, '');
+        }
+        return './';
+    }
+
+    function load_filter_modules() {
+        if (filterModulesPromise) return filterModulesPromise;
+        filterModulesPromise = new Promise(function (resolve, reject) {
+            const moduleFiles = ['auto-notch.js', 'equalizer.js', 'noise-blanker.js', 'hum-filter.js', 'compressor.js', 'noise-reduction.js', 'speech-expander.js', 'output-limiter.js', 'ai-enhancement.js', 'dtln.js'];
+            let index = 0;
+            const loadNext = function () {
+                if (index >= moduleFiles.length) {
+                    resolve();
+                    return;
+                }
+                const script = document.createElement('script');
+                script.src = dtln_get_base_path() + 'modules/' + moduleFiles[index++];
+                script.onload = loadNext;
+                script.onerror = function () { reject(new Error('Failed to load ' + script.src)); };
+                document.head.appendChild(script);
+            };
+            loadNext();
+        });
+        return filterModulesPromise;
+    }
+
+    function dtln_load_ort() {
+        if (window.ort) return Promise.resolve();
+        return new Promise(function (resolve, reject) {
+            const s = document.createElement('script');
+            s.src = dtln.basePath + 'ort/ort.min.js';
+            s.onload = function () { resolve(); };
+            s.onerror = function () { reject(new Error('Failed to load onnxruntime-web')); };
+            document.head.appendChild(s);
+        });
+    }
+
+    let aiWorkerController = null;
+    function ai_worker_request(message, transfer) {
+        if (!aiWorkerController) {
+            aiWorkerController = window.AudioFilterModules.aiEnhancement.createRnnoiseWorkerController();
+        }
+        return aiWorkerController.request(message, transfer);
+    }
+
+    function dtln_refresh_button() {
+        const btn = dtln.buttons[dtln.engine];
+        if (!btn) return;
+        if (btn.update) btn.update();
+        if (btn.element && dtln.loading) {
+            btn.element.style.background = '#e8a33d';
+            btn.element.style.color = '#000';
+        }
+    }
+
+    function ai_ensure_loaded() {
+        if (dtln.engine === 'rnnoise') return rnnoise_ensure_loaded();
+        if (dtln.engine === 'dtln') return dtln_ensure_loaded();
+        return Promise.resolve(false);
+    }
+
+    function ai_disable_on_load_failure() {
+        dtln.enabled = false;
+        is_dtln_enabled = false;
+        localStorage.setItem('openwebrx-audio-filter-ai-engine', 'none');
+        if (dtln.ioPort) dtln.ioPort.postMessage({ type: 'settings', enabled: false });
+    }
+
+    async function dtln_ensure_loaded() {
+        if (dtln.ready && dtln.readyEngine === 'dtln') return true;
+        if (dtln.loading) return false;
+        dtln.loading = true;
+        dtln_refresh_button();
+        try {
+            dtln.basePath = dtln.basePath || dtln_get_base_path();
+            await dtln_load_ort();
+            ort.env.wasm.wasmPaths = dtln.basePath + 'ort/';
+            ort.env.wasm.numThreads = 1;
+            dtln.session1 = await ort.InferenceSession.create(dtln.basePath + 'model_1.onnx', { executionProviders: ['wasm'] });
+            dtln.session2 = await ort.InferenceSession.create(dtln.basePath + 'model_2.onnx', { executionProviders: ['wasm'] });
+            dtln.state1 = new Float32Array(DTLN_STATE_LEN);
+            dtln.state2 = new Float32Array(DTLN_STATE_LEN);
+            dtln.ready = true;
+            dtln.readyEngine = 'dtln';
+            dtln_reset_runtime();
+            if (dtln.ioPort) dtln.ioPort.postMessage({ type: 'settings', enabled: dtln.enabled });
+        } catch (e) {
+            console.error(`[${PLUGIN_ID}] Failed to load DTLN model:`, e);
+            ai_disable_on_load_failure();
+        } finally {
+            dtln.loading = false;
+            dtln_refresh_button();
+        }
+        return dtln.ready && dtln.readyEngine === 'dtln';
+    }
+
+    async function rnnoise_ensure_loaded() {
+        if (dtln.ready && dtln.readyEngine === 'rnnoise') return true;
+        if (dtln.loading) return false;
+        dtln.loading = true;
+        dtln_refresh_button();
+        try {
+            dtln.basePath = dtln.basePath || dtln_get_base_path();
+            if (!dtln.rnLoaded) {
+                await ai_worker_request({ type: 'init-rnnoise', basePath: dtln.basePath });
+                dtln.rnLoaded = true;
+            }
+            dtln.ready = true;
+            dtln.readyEngine = 'rnnoise';
+            dtln_reset_runtime();
+            if (dtln.ioPort) dtln.ioPort.postMessage({ type: 'settings', enabled: dtln.enabled });
+        } catch (e) {
+            console.error(`[${PLUGIN_ID}] Failed to load RNNoise:`, e);
+            ai_disable_on_load_failure();
+        } finally {
+            dtln.loading = false;
+            dtln_refresh_button();
+        }
+        return dtln.ready && dtln.readyEngine === 'rnnoise';
+    }
+
+    async function dtlnProcessHop(hop) {
+        return window.AudioFilterModules.dtln.processHop(dtln, hop, {
+            blockSize: DTLN_BLOCK,
+            hopSize: DTLN_HOP,
+            real: dtlnReal,
+            imag: dtlnImag,
+            magnitude: dtlnMag,
+            phase: dtlnPhase,
+            fft: dtlnFFT,
+            ort: ort
+        });
+    }
+
+    function ai_process_rnnoise_hop(hop) {
+        if (!aiWorkerController) {
+            aiWorkerController = window.AudioFilterModules.aiEnhancement.createRnnoiseWorkerController();
+        }
+        return aiWorkerController.processHop(dtln, hop);
+    }
+
+    async function dtlnPump() {
+        if (!dtln.enabled || !dtln.ready || dtln.readyEngine !== dtln.engine) { dtln.pumpTimer = setTimeout(dtlnPump, 20); return; }
+        try {
+            if (dtln.inCount > 0) {
+                const chunk = new Float32Array(dtln.inCount);
+                for (let i = 0; i < chunk.length; i++) {
+                    chunk[i] = dtln.inRing[dtln.inHead];
+                    dtln.inHead = (dtln.inHead + 1) % DTLN_RING_SIZE;
+                }
+                dtln.inCount = 0;
+                const resampled = dtln.resampleIn(chunk);
+                for (let i = 0; i < resampled.length; i++) dtln.pending16k.push(resampled[i]);
+            }
+
+            const hopSize = ai_frame_size();
+            while (dtln.pending16k.length >= hopSize && dtln.enabled) {
+                const hop = dtln.pending16k.splice(0, hopSize);
+                if (dtln.engine === 'rnnoise') {
+                    const out = await ai_process_rnnoise_hop(hop);
+                    for (let i = 0; i < out.length; i++) dtln.pendingOut16k.push(out[i]);
+                } else {
+                    await dtlnProcessHop(hop);
+                }
+            }
+
+            if (dtln.pendingOut16k.length > 0) {
+                const outChunk = new Float32Array(dtln.pendingOut16k);
+                dtln.pendingOut16k = [];
+                const outResampled = dtln.resampleOut(outChunk);
+                if (outResampled.length > 0 && dtln.outputSink) {
+                    const gainLin = Math.pow(10, dtln.gainDb / 20);
+                    const buf = new Float32Array(outResampled.length);
+                    for (let i = 0; i < outResampled.length; i++) {
+                        const sample = outResampled[i];
+                        const emphasized = sample + dtln.presence * (sample - dtln.presenceState);
+                        dtln.presenceState = sample;
+                        buf[i] = emphasized * gainLin;
+                    }
+                    dtln.outputSink(buf);
+                }
+            }
+        } catch (e) {
+            console.error(`[${PLUGIN_ID}] AI processing error:`, e);
+        }
+        dtln.pumpTimer = setTimeout(dtlnPump, 4);
+    }
+
+    function dtln_push_input(samples) {
+        for (let i = 0; i < samples.length; i++) {
+            dtln.inRing[dtln.inTail] = samples[i];
+            dtln.inTail = (dtln.inTail + 1) % DTLN_RING_SIZE;
+            if (dtln.inCount < DTLN_RING_SIZE) dtln.inCount++;
+        }
+    }
+
+    function createDtlnScriptProcessorNode(ctx) {
+        const node = ctx.createScriptProcessor(2048, 1, 1);
+        node.isCustomFilter = true;
+        dtln.ioPort = null;
+        dtln.outputSink = function (chunk) {
+            for (let i = 0; i < chunk.length; i++) {
+                if (dtln.outCount < DTLN_RING_SIZE) {
+                    dtln.outRing[dtln.outTail] = chunk[i];
+                    dtln.outTail = (dtln.outTail + 1) % DTLN_RING_SIZE;
+                    dtln.outCount++;
+                }
+            }
+        };
+
+        node.onaudioprocess = function (event) {
+            const input = event.inputBuffer.getChannelData(0);
+            const output = event.outputBuffer.getChannelData(0);
+            if (!dtln.enabled || !dtln.ready) {
+                output.set(input);
+                return;
+            }
+            dtln_push_input(input);
+            for (let i = 0; i < output.length; i++) {
+                if (dtln.outCount > 0) {
+                    output[i] = dtln.outRing[dtln.outHead];
+                    dtln.outHead = (dtln.outHead + 1) % DTLN_RING_SIZE;
+                    dtln.outCount--;
+                } else {
+                    output[i] = input[i];
+                }
+            }
+        };
+        return node;
+    }
+
+    function createDtlnWorkletNode(ctx) {
+        const node = new AudioWorkletNode(ctx, 'openwebrx-dtln-io', {
+            numberOfInputs: 1,
+            numberOfOutputs: 1,
+            outputChannelCount: [1]
+        });
+        node.isCustomFilter = true;
+        node.port.onmessage = function (event) {
+            if (event.data && event.data.type === 'input') dtln_push_input(event.data.samples);
+        };
+        if (node.port.start) node.port.start();
+        dtln.ioPort = node.port;
+        dtln.outputSink = function (chunk) {
+            node.port.postMessage({ type: 'output', samples: chunk }, [chunk.buffer]);
+        };
+        node.port.postMessage({ type: 'settings', enabled: dtln.enabled });
+        return node;
+    }
+
+    function createAudioWorkletModule(ctx) {
+        if (!ctx.audioWorklet || typeof AudioWorkletNode === 'undefined') return Promise.reject(new Error('AudioWorklet is unavailable'));
+        const source = `
+            const FFT_SIZE = 1024;
+            const HOP_SIZE = FFT_SIZE / 2;
+            const fftBitRev = new Uint16Array(FFT_SIZE);
+            const fftCos = new Float32Array(FFT_SIZE / 2);
+            const fftSin = new Float32Array(FFT_SIZE / 2);
+            const fftWindow = new Float32Array(FFT_SIZE);
+            for (let i = 0; i < FFT_SIZE; i++) {
+                let j = 0;
+                let value = i;
+                for (let bit = 0; bit < 10; bit++) {
+                    j = (j << 1) | (value & 1);
+                    value >>= 1;
+                }
+                fftBitRev[i] = j;
+                fftWindow[i] = Math.sin(Math.PI * i / FFT_SIZE);
+            }
+            for (let i = 0; i < FFT_SIZE / 2; i++) {
+                const angle = -2 * Math.PI * i / FFT_SIZE;
+                fftCos[i] = Math.cos(angle);
+                fftSin[i] = Math.sin(angle);
+            }
+            function workletFft(real, imag, inverse) {
+                for (let i = 0; i < FFT_SIZE; i++) {
+                    const j = fftBitRev[i];
+                    if (i < j) {
+                        let temp = real[i]; real[i] = real[j]; real[j] = temp;
+                        temp = imag[i]; imag[i] = imag[j]; imag[j] = temp;
+                    }
+                }
+                for (let half = 1; half < FFT_SIZE; half <<= 1) {
+                    const step = FFT_SIZE / (half << 1);
+                    for (let start = 0; start < FFT_SIZE; start += half << 1) {
+                        for (let k = 0, table = 0; k < half; k++, table += step) {
+                            const sine = inverse ? -fftSin[table] : fftSin[table];
+                            const index = start + k + half;
+                            const tr = fftCos[table] * real[index] - sine * imag[index];
+                            const ti = fftCos[table] * imag[index] + sine * real[index];
+                            real[index] = real[start + k] - tr;
+                            imag[index] = imag[start + k] - ti;
+                            real[start + k] += tr;
+                            imag[start + k] += ti;
+                        }
+                    }
+                }
+                if (inverse) {
+                    for (let i = 0; i < FFT_SIZE; i++) {
+                        real[i] /= FFT_SIZE;
+                        imag[i] /= FFT_SIZE;
+                    }
+                }
+            }
+            ${window.AudioFilterModules.noiseBlanker.workletSource}
+            ${window.AudioFilterModules.compressor.workletSource}
+            ${window.AudioFilterModules.noiseReduction.workletSource}
+            ${window.AudioFilterModules.speechExpander.workletSource}
+            ${window.AudioFilterModules.outputLimiter.workletSource}
+            class AudioFilterProcessor extends AudioWorkletProcessor {
+                constructor(options) {
+                    super();
+                    this.stage = options.processorOptions.stage;
+                    this.settings = {};
+                    this.average = 0.1;
+                    this.blankCounter = 0;
+                    this.nbEnvelope = 0;
+                    this.nbPreviousAbs = 0;
+                    this.nbCooldown = 0;
+                    this.nbSampleCounter = 0;
+                    this.nbLastImpulse = -1;
+                    this.nbPeriodEstimate = 0;
+                    this.nbPeriodStableCount = 0;
+                    this.envelope = 0;
+                    this.gain = 1;
+                    this.hang = 0;
+                    this.noise = 0.001;
+                    this.silentFrames = 0;
+                    this.warmupSamples = 0;
+                    this.nrInput = new Float32Array(4096 + FFT_SIZE);
+                    this.nrOutput = new Float32Array(4096 + FFT_SIZE);
+                    this.nrReal = new Float32Array(FFT_SIZE);
+                    this.nrImag = new Float32Array(FFT_SIZE);
+                    this.nrNoise = new Float32Array(FFT_SIZE / 2 + 1);
+                    this.nrLastGain = new Float32Array(FFT_SIZE / 2 + 1).fill(1);
+                    this.nrMagnitude = new Float32Array(FFT_SIZE / 2 + 1);
+                    this.nrInitialized = false;
+                    this.nrPending = new Float32Array(4096);
+                    this.nrPendingLength = 0;
+                    this.nrReady = new Float32Array(8192);
+                    this.nrReadyLength = 0;
+                    this.expanderState = { envelope: 0, gain: 1 };
+                    this.limiterState = { envelope: 0, gain: 1 };
+                    this.port.onmessage = event => {
+                        if (event.data.type === 'reset') {
+                            this.average = 0.1;
+                            this.blankCounter = 0;
+                            this.nbEnvelope = 0;
+                            this.nbPreviousAbs = 0;
+                            this.nbCooldown = 0;
+                            this.nbSampleCounter = 0;
+                            this.nbLastImpulse = -1;
+                            this.nbPeriodEstimate = 0;
+                            this.nbPeriodStableCount = 0;
+                            this.envelope = 0;
+                            this.gain = 1;
+                            this.hang = 0;
+                            this.noise = 0.001;
+                            this.silentFrames = 0;
+                            this.warmupSamples = 2048;
+                            this.nrInput.fill(0);
+                            this.nrOutput.fill(0);
+                            this.nrNoise.fill(1e-9);
+                            this.nrLastGain.fill(1);
+                            this.nrInitialized = false;
+                            this.nrPending.fill(0);
+                            this.nrPendingLength = 0;
+                            this.nrReady.fill(0);
+                            this.nrReadyLength = 0;
+                            this.expanderState = { envelope: 0, gain: 1 };
+                            this.limiterState = { envelope: 0, gain: 1 };
+                        } else if (event.data.type === 'settings') {
+                            this.settings = event.data.value || {};
+                        }
+                    };
+                }
+                processSpectralBlock(block) {
+                    processNoiseReductionBlock(this, block, workletFft, FFT_SIZE, HOP_SIZE, fftWindow, sampleRate);
+                }
+                process(inputs, outputs) {
+                    const input = inputs[0] && inputs[0][0];
+                    const output = outputs[0] && outputs[0][0];
+                    if (!input || !output) return true;
+                    const settings = this.settings;
+                    let blockPeak = 0;
+                    for (let i = 0; i < input.length; i++) blockPeak = Math.max(blockPeak, Math.abs(input[i]));
+                    if (this.stage === 'nr') {
+                        if (!settings.enabled) {
+                            output.set(input);
+                            return true;
+                        }
+                        for (let i = 0; i < input.length; i++) this.nrPending[this.nrPendingLength + i] = input[i];
+                        this.nrPendingLength += input.length;
+                        while (this.nrPendingLength >= 4096) {
+                            this.processSpectralBlock(this.nrPending.slice(0, 4096));
+                            this.nrPending.copyWithin(0, 4096, this.nrPendingLength);
+                            this.nrPendingLength -= 4096;
+                        }
+                        if (this.nrReadyLength >= input.length) {
+                            output.set(this.nrReady.subarray(0, input.length));
+                            this.nrReady.copyWithin(0, input.length, this.nrReadyLength);
+                            this.nrReadyLength -= input.length;
+                        } else {
+                            output.fill(0);
+                        }
+                        return true;
+                    }
+                    if (this.stage === 'nr') {
+                        if (blockPeak < 0.00001) this.silentFrames++;
+                        else if (this.silentFrames > 20) {
+                            this.noise = Math.max(0.001, blockPeak * 0.1);
+                            this.warmupSamples = 2048;
+                            this.silentFrames = 0;
+                        } else this.silentFrames = 0;
+                    }
+                    for (let i = 0; i < input.length; i++) {
+                        let sample = input[i];
+                        if (this.stage === 'nb' && settings.nb_enabled) {
+                            sample = processNoiseBlanker(this, sample, settings, sampleRate);
+                        } else if (this.stage === 'nr') {
+                            // NR is processed as a spectral block below, not per sample.
+                        } else if (this.stage === 'comp' && settings.comp_enabled) {
+                            sample = processCompressor(this, sample, settings, sampleRate);
+                        } else if (this.stage === 'expander') {
+                            sample = processSpeechExpanderSample(this.expanderState, sample, settings, sampleRate);
+                        } else if (this.stage === 'limiter') {
+                            sample = processOutputLimiterSample(this.limiterState, sample, settings, sampleRate);
+                        }
+                        output[i] = sample;
+                    }
+                    if (this.stage === 'nr') {
+                        if (!settings.enabled) {
+                            output.set(input);
+                            return true;
+                        }
+                        const bufferSize = input.length;
+                        this.nrInput.copyWithin(0, bufferSize, bufferSize + FFT_SIZE);
+                        this.nrInput.set(input, FFT_SIZE);
+                        this.nrOutput.copyWithin(0, bufferSize, bufferSize + FFT_SIZE);
+                        this.nrOutput.fill(0, FFT_SIZE);
+                        const alpha = settings.alpha;
+                        const threshold = Math.pow(10, settings.snr / 20);
+                        const outputGain = Math.pow(10, settings.gain / 20);
+                        const comb = settings.comb === undefined ? 0.5 : settings.comb;
+                        const speechMode = !!settings.speech_mode;
+                        const noiseRise = 1 + (1 - (speechMode && alpha > 0.98 ? 0.95 : alpha)) * 0.01;
+                        for (let block = 0; block < bufferSize / HOP_SIZE; block++) {
+                            const position = block * HOP_SIZE + FFT_SIZE - HOP_SIZE;
+                            for (let k = 0; k < FFT_SIZE; k++) this.nrReal[k] = this.nrInput[position + k] * fftWindow[k];
+                            this.nrImag.fill(0);
+                            workletFft(this.nrReal, this.nrImag, false);
+                            for (let k = 0; k <= FFT_SIZE / 2; k++) {
+                                const magnitude = Math.sqrt(this.nrReal[k] * this.nrReal[k] + this.nrImag[k] * this.nrImag[k]);
+                                this.nrMagnitude[k] = magnitude;
+                                const currentAlpha = speechMode && magnitude < this.nrNoise[k] * 0.5 ? 0.90 : alpha;
+                                if (magnitude < this.nrNoise[k]) this.nrNoise[k] = currentAlpha * this.nrNoise[k] + (1 - currentAlpha) * magnitude;
+                                else this.nrNoise[k] = this.nrNoise[k] * noiseRise + 1e-6;
+                                this.nrNoise[k] = Math.max(this.nrNoise[k], 1e-9);
+                            }
+                            if (!this.nrInitialized) {
+                                for (let k = 0; k <= FFT_SIZE / 2; k++) this.nrNoise[k] = Math.max(this.nrMagnitude[k], 1e-6);
+                                this.nrInitialized = true;
+                            }
+                            for (let k = 0; k <= FFT_SIZE / 2; k++) {
+                                const frequency = k * sampleRate / FFT_SIZE;
+                                let localThreshold = threshold;
+                                const magnitude = this.nrMagnitude[k];
+                                const peak = k > 1 && k < FFT_SIZE / 2 - 1 && magnitude >= this.nrMagnitude[k - 1] && magnitude >= this.nrMagnitude[k + 1];
+                                if (frequency > 100 && frequency < 9000) localThreshold *= peak ? 1 - 0.95 * comb : 1 + 0.9 * comb;
+                                else localThreshold *= 1.2;
+                                const snr = magnitude / (this.nrNoise[k] + 0.000001);
+                                let gain = snr < localThreshold ? Math.pow(snr / localThreshold, 2) : 1;
+                                gain = Math.max(gain, 0.005);
+                                this.nrLastGain[k] = gain > this.nrLastGain[k] ? this.nrLastGain[k] * 0.4 + gain * 0.6 : this.nrLastGain[k] * 0.95 + gain * 0.05;
+                                this.nrReal[k] *= this.nrLastGain[k];
+                                this.nrImag[k] *= this.nrLastGain[k];
+                                if (k > 0 && k < FFT_SIZE / 2) {
+                                    this.nrReal[FFT_SIZE - k] *= this.nrLastGain[k];
+                                    this.nrImag[FFT_SIZE - k] *= this.nrLastGain[k];
+                                }
+                            }
+                            workletFft(this.nrReal, this.nrImag, true);
+                            for (let k = 0; k < FFT_SIZE; k++) this.nrOutput[position + k] += this.nrReal[k] * fftWindow[k];
+                        }
+                        for (let i = 0; i < bufferSize; i++) output[i] = this.nrOutput[i] * outputGain;
+                    }
+                    return true;
+                }
+            }
+            registerProcessor('openwebrx-audio-filter', AudioFilterProcessor);
+
+            class DtlnIoProcessor extends AudioWorkletProcessor {
+                constructor() {
+                    super();
+                    this.enabled = false;
+                    this.outQueue = [];
+                    this.outOffset = 0;
+                    this.port.onmessage = (event) => {
+                        const d = event.data;
+                        if (d.type === 'settings') this.enabled = !!d.enabled;
+                        else if (d.type === 'output') this.outQueue.push(d.samples);
+                        else if (d.type === 'reset') { this.outQueue = []; this.outOffset = 0; }
+                    };
+                }
+                process(inputs, outputs) {
+                    const input = inputs[0] && inputs[0][0];
+                    const output = outputs[0] && outputs[0][0];
+                    if (!input || !output) return true;
+                    if (this.enabled) this.port.postMessage({ type: 'input', samples: input.slice() });
+                    for (let i = 0; i < output.length; i++) {
+                        if (this.outQueue.length > 0) {
+                            const chunk = this.outQueue[0];
+                            output[i] = chunk[this.outOffset++];
+                            if (this.outOffset >= chunk.length) { this.outQueue.shift(); this.outOffset = 0; }
+                        } else {
+                            output[i] = input[i];
+                        }
+                    }
+                    return true;
+                }
+            }
+            registerProcessor('openwebrx-dtln-io', DtlnIoProcessor);
+        `;
+        const url = URL.createObjectURL(new Blob([source], { type: 'application/javascript' }));
+        return ctx.audioWorklet.addModule(url).finally(() => URL.revokeObjectURL(url));
+    }
+
+    function isSecureAudioContext() {
+        if (typeof window !== 'undefined' && window.isSecureContext !== undefined)
+            return window.isSecureContext;
+        if (typeof location === 'undefined') return false;
+        return location.protocol === 'https:' ||
+            location.hostname === 'localhost' ||
+            location.hostname === '127.0.0.1' ||
+            location.hostname === '::1';
+    }
+
+    function is_stereo_bypass(modulation) {
+        return ['iq', 'bcfm', 'hdr'].includes(String(modulation).toLowerCase());
+    }
+
+    function connectFilterChain(ctx) {
+        const chain = [
+            activeFilters.inputProxy,
+            activeFilters.nbProcessor,
+            ...activeFilters.humFilters,
+            activeFilters.analyser,
+            ...activeFilters.notches,
+            activeFilters.nrProcessor,
+            activeFilters.highpass,
+            activeFilters.loudness,
+            activeFilters.peaking,
+            activeFilters.air,
+            activeFilters.lowpass,
+            activeFilters.compHighpass,
+            activeFilters.compLowpass,
+            activeFilters.compProcessor,
+            activeFilters.gain,
+            activeFilters.dtlnProcessor,
+            activeFilters.expanderProcessor,
+            activeFilters.limiterProcessor,
+            activeFilters.outputAnalyser
+        ].filter(Boolean);
+
+        chain.forEach(function (node) {
+            try { node.disconnect(); } catch (error) { }
+        });
+        if (is_stereo_bypass(get_modulation())) {
+            originalConnect.call(activeFilters.inputProxy, ctx.destination);
+            return;
+        }
+        for (let i = 0; i < chain.length - 1; i++) chain[i].connect(chain[i + 1]);
+        originalConnect.call(activeFilters.outputAnalyser, ctx.destination);
+    }
+
+    function setupScriptProcessorStages(ctx) {
+        const createStage = function (handler) {
+            const processor = ctx.createScriptProcessor(4096, 1, 1);
+            processor.isCustomFilter = true;
+            processor.onaudioprocess = handler;
+            return processor;
+        };
+
+        const nbState = window.AudioFilterModules.noiseBlanker.createState();
+        const nb = createStage(function (event) {
+            const input = event.inputBuffer.getChannelData(0);
+            const output = event.outputBuffer.getChannelData(0);
+            const settings = activeFilters.dynamicsSettings || {};
+            for (let i = 0; i < input.length; i++) {
+                output[i] = window.AudioFilterModules.noiseBlanker.processSample(nbState, input[i], settings, ctx.sampleRate);
+            }
+        });
+
+        let nrNoise = 0.001;
+        const nr = window.AudioFilterModules.noiseReduction.createScriptProcessor(ctx, {
+            fftSize: FFT_SIZE,
+            fftWindow: fft_win,
+            performFFT: performFFT,
+            getSettings: function () { return activeFilters.nrSettings; }
+        });
+
+        const compState = window.AudioFilterModules.compressor.createState();
+        const comp = createStage(function (event) {
+            const input = event.inputBuffer.getChannelData(0);
+            const output = event.outputBuffer.getChannelData(0);
+            const settings = activeFilters.dynamicsSettings || {};
+            for (let i = 0; i < input.length; i++) {
+                output[i] = window.AudioFilterModules.compressor.processSample(compState, input[i], settings, ctx.sampleRate);
+            }
+        });
+
+        const expanderState = window.AudioFilterModules.speechExpander.createState();
+        const expander = createStage(function (event) {
+            const input = event.inputBuffer.getChannelData(0);
+            const output = event.outputBuffer.getChannelData(0);
+            const settings = activeFilters.dynamicsSettings || {};
+            for (let i = 0; i < input.length; i++) {
+                output[i] = window.AudioFilterModules.speechExpander.processSample(expanderState, input[i], settings, ctx.sampleRate);
+            }
+        });
+
+        const limiterState = window.AudioFilterModules.outputLimiter.createState();
+        const limiter = createStage(function (event) {
+            const input = event.inputBuffer.getChannelData(0);
+            const output = event.outputBuffer.getChannelData(0);
+            const settings = activeFilters.dynamicsSettings || {};
+            for (let i = 0; i < input.length; i++) {
+                output[i] = window.AudioFilterModules.outputLimiter.processSample(limiterState, input[i], settings, ctx.sampleRate);
+            }
+        });
+
+        const dtlnSp = createDtlnScriptProcessorNode(ctx);
+        [activeFilters.dtlnProcessor, activeFilters.nbProcessor, activeFilters.nrProcessor, activeFilters.compProcessor, activeFilters.expanderProcessor, activeFilters.limiterProcessor].forEach(function (node) {
+            try { node.disconnect(); } catch (error) { }
+        });
+        activeFilters.dtlnProcessor = dtlnSp;
+        activeFilters.nbProcessor = nb;
+        activeFilters.nrProcessor = nr;
+        activeFilters.compProcessor = comp;
+        activeFilters.expanderProcessor = expander;
+        activeFilters.limiterProcessor = limiter;
+        connectFilterChain(ctx);
+        activeFilters.workletActive = false;
+        console.warn('[audio_filter] AudioWorklet unavailable; using ScriptProcessorNode fallback.');
+    }
+
+    function setupFilters(ctx) {
+
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 4096;
+        analyser.smoothingTimeConstant = 0.15;
+        analyser.minDecibels = -140;
+        analyser.maxDecibels = -10;
+        activeFilters.analyser = analyser;
+
+        const outputAnalyser = ctx.createAnalyser();
+        outputAnalyser.fftSize = 4096;
+        outputAnalyser.smoothingTimeConstant = 0.15;
+        outputAnalyser.minDecibels = -140;
+        outputAnalyser.maxDecibels = -10;
+        activeFilters.outputAnalyser = outputAnalyser;
+
+        activeFilters.notches = window.AudioFilterModules.autoNotch.createNodes(ctx, 4);
+        activeFilters.humFilters = window.AudioFilterModules.humFilter.createNodes(ctx);
+
+        // Compressor Pre-Filter (Bandpass)
+        const compHighpass = ctx.createBiquadFilter();
+        compHighpass.type = 'highpass';
+        compHighpass.frequency.value = 0;
+        compHighpass.isCustomFilter = true;
+        activeFilters.compHighpass = compHighpass;
+
+        const compLowpass = ctx.createBiquadFilter();
+        compLowpass.type = 'lowpass';
+        compLowpass.frequency.value = (ctx.sampleRate / 2) - 100;
+        compLowpass.isCustomFilter = true;
+        activeFilters.compLowpass = compLowpass;
+
+        // AudioWorklet placeholders are replaced once the module is ready.
+        const nbProcessor = ctx.createGain();
+        nbProcessor.isCustomFilter = true;
+        activeFilters.nbProcessor = nbProcessor;
+        activeFilters.inputProxy = ctx.createGain();
+        activeFilters.inputProxy.isCustomFilter = true;
+        const dtlnPlaceholder = ctx.createGain();
+        dtlnPlaceholder.isCustomFilter = true;
+        activeFilters.dtlnProcessor = dtlnPlaceholder;
+
+        dtln.ctxRate = ctx.sampleRate;
+        dtln.inRing = new Float32Array(DTLN_RING_SIZE);
+        dtln.outRing = new Float32Array(DTLN_RING_SIZE);
+        dtln_reset_runtime();
+        if (!dtln.pumpTimer) dtln.pumpTimer = setTimeout(dtlnPump, 4);
+
+        // NR placeholder; the real processor is selected below per context.
+        const nrProcessor = ctx.createGain();
+        nrProcessor.isCustomFilter = true;
+        activeFilters.nrProcessor = nrProcessor;
+
+        activeFilters.reset_nr = function () {
+            if (activeFilters.nrProcessor.resetSpectralState) {
+                activeFilters.nrProcessor.resetSpectralState();
+            } else if (activeFilters.nrProcessor.port) {
+                activeFilters.nrProcessor.port.postMessage({ type: 'reset' });
+                activeFilters.nrProcessor.port.postMessage({ type: 'settings', value: activeFilters.nrSettings || {} });
+            }
+        };
+
+        // 3. AudioWorklet Compressor Processor (End of Chain)
+        const compProcessor = ctx.createGain();
+        compProcessor.isCustomFilter = true;
+        activeFilters.compProcessor = compProcessor;
+
+        const expanderProcessor = ctx.createGain();
+        expanderProcessor.isCustomFilter = true;
+        activeFilters.expanderProcessor = expanderProcessor;
+
+        const limiterProcessor = ctx.createGain();
+        limiterProcessor.isCustomFilter = true;
+        activeFilters.limiterProcessor = limiterProcessor;
+
+        Object.assign(activeFilters, window.AudioFilterModules.equalizer.createNodes(ctx));
+        const highpass = activeFilters.highpass;
+        const loudness = activeFilters.loudness;
+        const peaking = activeFilters.peaking;
+        const air = activeFilters.air;
+        const lowpass = activeFilters.lowpass;
+        const gainNode = activeFilters.gain;
+
+        connectFilterChain(ctx);
+        apply_filter_settings();
+
+        activeFilters.workletFallback = function () {
+            if (!activeFilters.workletActive) return;
+            activeFilters.workletActive = false;
+            [activeFilters.dtlnProcessor, activeFilters.nbProcessor, activeFilters.nrProcessor, activeFilters.compProcessor, activeFilters.expanderProcessor, activeFilters.limiterProcessor].forEach(function (node) {
+                try { node.disconnect(); } catch (error) { }
+            });
+            const dtlnSp = createDtlnScriptProcessorNode(ctx);
+            activeFilters.dtlnProcessor = dtlnSp;
+            activeFilters.nbProcessor = nbProcessor;
+            activeFilters.nrProcessor = nrProcessor;
+            activeFilters.compProcessor = compProcessor;
+            connectFilterChain(ctx);
+            apply_filter_settings();
+        };
+
+        if (!isSecureAudioContext()) {
+            console.warn('[audio_filter] Insecure context; using ScriptProcessorNode fallback.');
+            setupScriptProcessorStages(ctx);
+        } else {
+            createAudioWorkletModule(ctx).then(function () {
+            const options = function (stage) {
+                return {
+                    numberOfInputs: 1,
+                    numberOfOutputs: 1,
+                    outputChannelCount: [1],
+                    processorOptions: { stage: stage }
+                };
+            };
+            const createProcessor = function (stage) {
+                const processor = new AudioWorkletNode(ctx, 'openwebrx-audio-filter', options(stage));
+                processor.isCustomFilter = true;
+                processor.addEventListener('processorerror', function () {
+                    console.error('[audio_filter] AudioWorklet processor failed:', stage);
+                    activeFilters.workletFallback();
+                });
+                if (processor.port && processor.port.start) processor.port.start();
+                return processor;
+            };
+
+            const workletNb = createProcessor('nb');
+            const workletNr = createProcessor('nr');
+            const workletComp = createProcessor('comp');
+
+            const dtlnWorklet = createDtlnWorkletNode(ctx);
+            dtlnWorklet.addEventListener('processorerror', function () {
+                console.error('[audio_filter] DTLN AudioWorklet processor failed');
+                activeFilters.workletFallback();
+            });
+            [activeFilters.dtlnProcessor, activeFilters.nbProcessor, activeFilters.nrProcessor, activeFilters.compProcessor, activeFilters.expanderProcessor, activeFilters.limiterProcessor].forEach(function (node) {
+                try { node.disconnect(); } catch (error) { }
+            });
+            activeFilters.dtlnProcessor = dtlnWorklet;
+            activeFilters.nbProcessor = workletNb;
+            activeFilters.nrProcessor = workletNr;
+            activeFilters.compProcessor = workletComp;
+            activeFilters.expanderProcessor = createProcessor('expander');
+            activeFilters.limiterProcessor = createProcessor('limiter');
+            activeFilters.workletActive = true;
+            connectFilterChain(ctx);
+            apply_filter_settings();
+            if (is_nr_enabled) activeFilters.reset_nr();
+            }).catch(function (error) {
+                console.warn('[audio_filter] AudioWorklet stages unavailable; using ScriptProcessorNode fallback:', error);
+                setupScriptProcessorStages(ctx);
+            });
+        }
+
+    }
+
+    function initAudioFilter() {
+        if (is_initialized) return;
+
+        if (!window.AudioFilterModules || !window.AudioFilterModules.autoNotch || !window.AudioFilterModules.equalizer || !window.AudioFilterModules.noiseBlanker || !window.AudioFilterModules.humFilter || !window.AudioFilterModules.compressor || !window.AudioFilterModules.noiseReduction || !window.AudioFilterModules.speechExpander || !window.AudioFilterModules.outputLimiter || !window.AudioFilterModules.aiEnhancement || !window.AudioFilterModules.dtln) {
+            load_filter_modules().then(initAudioFilter).catch(function (error) {
+                console.error(`[${PLUGIN_ID}] Error loading filter modules:`, error);
+            });
+            return;
+        }
+
+        try {
+            if (localStorage.getItem('openwebrx-audio-filter-enabled') === 'true') is_filter_enabled = true;
+            if (localStorage.getItem('openwebrx-audio-filter-nr') === 'true') is_nr_enabled = true;
+            if (localStorage.getItem('openwebrx-audio-filter-autonotch') === 'true') is_autonotch_enabled = true;
+            if (localStorage.getItem('openwebrx-audio-filter-declick') === 'true') is_nb_enabled = true;
+            if (localStorage.getItem('openwebrx-audio-filter-compressor') === 'true') is_compressor_enabled = true;
+            if (localStorage.getItem('openwebrx-audio-filter-hum') === 'true') is_hum_filter_enabled = true;
+            if (localStorage.getItem('openwebrx-audio-filter-expander') === 'true') is_expander_enabled = true;
+            if (localStorage.getItem('openwebrx-audio-filter-limiter') === 'true') is_limiter_enabled = true;
+            if (localStorage.getItem('openwebrx-audio-filter-loudness') === 'true') is_loudness_enabled = true;
+            const savedEngine = localStorage.getItem('openwebrx-audio-filter-ai-engine');
+            if (savedEngine && savedEngine !== 'none') {
+                dtln.engine = savedEngine;
+                if (dtln.engine === 'df') dtln.engine = 'dtln'; // DF removed, fallback to DTLN
+                is_dtln_enabled = true;
+            } else if (!savedEngine && localStorage.getItem('openwebrx-audio-filter-dtln') === 'true') {
+                // migrate pre-multi-engine setting
+                dtln.engine = 'dtln';
+                is_dtln_enabled = true;
+            }
+            dtln.enabled = is_dtln_enabled;
+            if (is_dtln_enabled) ai_ensure_loaded();
+
+            try {
+                const savedSettings = localStorage.getItem('openwebrx-audio-filter-settings');
+                if (savedSettings) {
+                    const parsed = JSON.parse(savedSettings);
+                    if (parsed.ssb || parsed.am || parsed.cw || parsed.nfm || parsed.wfm || parsed.digital) {
+                        if (parsed.ssb) settings_store.ssb = parsed.ssb;
+                        if (parsed.am) settings_store.am = parsed.am;
+                        if (parsed.cw) settings_store.cw = parsed.cw;
+                        if (parsed.nfm) settings_store.nfm = parsed.nfm;
+                        if (parsed.wfm) settings_store.wfm = parsed.wfm;
+                        if (parsed.digital) settings_store.digital = parsed.digital;
+                    } else {
+                        settings_store.ssb = parsed;
+                    }
+                }
+            } catch (e) {
+                console.error(`[${PLUGIN_ID}] Error loading settings:`, e);
+            }
+
+            if (!create_ui()) {
+                setTimeout(initAudioFilter, 250);
+                return;
+            }
+
+            last_modulation = get_modulation();
+
+            let startKey = get_config_mode(last_modulation);
+            if (settings_store[startKey]) {
+                override_settings = JSON.parse(JSON.stringify(settings_store[startKey]));
+            }
+
+            // Start monitoring loops
+            install_modulation_hook();
+            setInterval(check_modulation_loop, 500);
+            setInterval(process_audio_analysis, 50); // Polling for AutoNotch
+
+            is_initialized = true;
+            if (typeof Plugins !== 'undefined' && Plugins.audio_filter) {
+                Plugins.audio_filter.is_initialized = true;
+            }
+        } catch (e) {
+            console.error(`[${PLUGIN_ID}] Error during initialization:`, e);
+        }
+    }
+
+    let viz_cache = { w: 0, maxFreq: 0, freqArray: null, magResponse: null, phaseResponse: null, totalResp: null, spectrumData: null };
+
+    function draw_comp_visualization(ctx, w, h, mouseX, mouseY) {
+        ctx.clearRect(0, 0, w, h);
+
+        const minFreq = 50;
+        const sampleRate = activeFilters.outputAnalyser ? activeFilters.outputAnalyser.context.sampleRate : 48000;
+        const maxFreq = Math.max(minFreq + 1, Math.min(16000, sampleRate / 2 - 100));
+        const freqToX = (f) => {
+            if (f < minFreq) f = minFreq;
+            if (f > maxFreq) f = maxFreq;
+            return (w - 2) * (Math.log(f) - Math.log(minFreq)) / (Math.log(maxFreq) - Math.log(minFreq)) + 1;
+        };
+
+        if (viz_cache.w !== w || viz_cache.maxFreq !== maxFreq) {
+            viz_cache.w = w;
+            viz_cache.maxFreq = maxFreq;
+            viz_cache.freqArray = new Float32Array(w);
+            viz_cache.magResponse = new Float32Array(w);
+            viz_cache.phaseResponse = new Float32Array(w);
+            viz_cache.totalResp = new Float32Array(w);
+            for (let x = 0; x < w; x++) {
+                let t = (x - 1) / (w - 2);
+                if (t < 0) t = 0; if (t > 1) t = 1;
+                viz_cache.freqArray[x] = minFreq * Math.pow(maxFreq / minFreq, t);
+            }
+        }
+        const { freqArray, magResponse, phaseResponse, totalResp } = viz_cache;
+
+        const drawCurve = (color, fill, nodes) => {
+            if (!nodes || nodes.length === 0) return;
+
+            totalResp.fill(1.0);
+
+            let hasNodes = false;
+            nodes.forEach(node => {
+                if (node && node.getFrequencyResponse) {
+                    node.getFrequencyResponse(freqArray, magResponse, phaseResponse);
+                    for(let i=0; i<w; i++) totalResp[i] *= magResponse[i];
+                    hasNodes = true;
+                }
+            });
+
+            if (!hasNodes) return;
+
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.5;
+            if (fill) ctx.fillStyle = fill;
+
+            for (let x = 0; x < w; x++) {
+                let mag = totalResp[x];
+                if (mag < 0.00001) mag = 0.00001;
+                let db = 20 * Math.log10(mag);
+                let y = 40 - db * (h - 40) / 60;
+
+                if (x === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+
+            if (fill) {
+                ctx.lineTo(w, h);
+                ctx.lineTo(0, h);
+                ctx.fill();
+            }
+            ctx.stroke();
+            ctx.lineWidth = 1;
+        };
+
+        // 1. Compressor Bandpass (Green)
+        if (is_compressor_enabled) {
+            if (activeFilters.compHighpass && activeFilters.compLowpass) {
+                const xHPF = freqToX(activeFilters.compHighpass.frequency.value);
+                const xLPF = freqToX(activeFilters.compLowpass.frequency.value);
+                ctx.fillStyle = 'rgba(57, 255, 20, 0.1)';
+                ctx.fillRect(xHPF, 0, xLPF - xHPF, h);
+            }
+
+            if (activeFilters.compHighpass) {
+                const xHPF = freqToX(activeFilters.compHighpass.frequency.value);
+                ctx.fillStyle = 'rgba(57, 255, 20, 0.8)';
+                ctx.font = '9px sans-serif';
+                ctx.textAlign = 'left';
+                ctx.fillText('Comp', xHPF + 2, 10);
+            }
+        }
+
+        // 2. EQ (Yellow)
+        if (is_filter_enabled && activeFilters.highpass) {
+
+            ctx.strokeStyle = 'rgba(255, 255, 0, 0.5)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([2, 2]);
+
+            const xHP = freqToX(activeFilters.highpass.frequency.value);
+            ctx.beginPath();
+            ctx.moveTo(xHP, 0);
+            ctx.lineTo(xHP, h);
+            ctx.stroke();
+
+            if (activeFilters.lowpass) {
+                const xLP = freqToX(activeFilters.lowpass.frequency.value);
+                ctx.beginPath();
+                ctx.moveTo(xLP, 0);
+                ctx.lineTo(xLP, h);
+                ctx.stroke();
+            }
+            ctx.setLineDash([]);
+
+            if (activeFilters.peaking && Math.abs(activeFilters.peaking.gain.value) > 0.1) {
+                const f_c = activeFilters.peaking.frequency.value;
+                const Q = activeFilters.peaking.Q.value;
+                const term1 = Math.sqrt(1 + 1 / (4 * Q * Q));
+                const term2 = 1 / (2 * Q);
+                const f1 = f_c * (term1 - term2);
+                const f2 = f_c * (term1 + term2);
+                const x1 = freqToX(f1);
+                const x2 = freqToX(f2);
+                ctx.fillStyle = 'rgba(255, 255, 0, 0.15)';
+                ctx.fillRect(x1, 0, x2 - x1, h);
+            }
+        }
+
+        // 3. Auto Notch (Red)
+        if (is_autonotch_enabled && activeFilters.notches) {
+            let effectiveNotchRange = (override_settings.notchRange !== null && override_settings.notchRange !== undefined) ? override_settings.notchRange : 4000;
+            let effectiveNotchCenter = (override_settings.notchCenter !== null && override_settings.notchCenter !== undefined) ? override_settings.notchCenter : (effectiveNotchRange / 2);
+
+            let halfWidth = effectiveNotchRange / 2;
+            let startFreq = Math.max(50, effectiveNotchCenter - halfWidth);
+            let endFreq = effectiveNotchCenter + halfWidth;
+            const x1 = freqToX(startFreq);
+            const x2 = freqToX(endFreq);
+            ctx.fillStyle = 'rgba(255, 50, 50, 0.1)';
+            ctx.fillRect(x1, 0, x2 - x1, h);
+
+            const activeNotches = activeFilters.notches.filter(n => n.frequency.value > 10);
+            if (activeNotches.length > 0) {
+                drawCurve('rgba(255, 50, 50, 0.8)', null, activeNotches);
+
+                ctx.fillStyle = 'rgba(255, 255, 0, 0.9)';
+                activeNotches.forEach(n => {
+                    const bw = n.frequency.value / n.Q.value;
+                    const xStart = freqToX(n.frequency.value - bw / 2);
+                    const xEnd = freqToX(n.frequency.value + bw / 2);
+                    const wBar = Math.max(2, xEnd - xStart);
+                    ctx.fillRect(xStart, 0, wBar, 6);
+                });
+            }
+        }
+
+        // 4. Spectrum (Input & Output)
+        const drawSpectrum = (analyser, color) => {
+            if (!analyser) return;
+            const bufferLength = analyser.frequencyBinCount;
+            if (!viz_cache.spectrumData || viz_cache.spectrumData.length !== bufferLength) {
+                viz_cache.spectrumData = new Uint8Array(bufferLength);
+            }
+            const dataArray = viz_cache.spectrumData;
+            analyser.getByteFrequencyData(dataArray);
+                const analyserSampleRate = analyser.context.sampleRate;
+
+            ctx.beginPath();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1;
+            let started = false;
+            for (let x = 0; x < w; x++) {
+                let f = viz_cache.freqArray[x];
+
+                let bin = Math.floor(f / (analyserSampleRate / 2) * bufferLength);
+                if (bin < 0) bin = 0; if (bin >= bufferLength) bin = bufferLength - 1;
+
+                let y = h - (dataArray[bin] / 255) * h;
+                if (!started) { ctx.moveTo(x, y); started = true; } else { ctx.lineTo(x, y); }
+            }
+            ctx.stroke();
+        };
+
+        if (show_input_spectrum) {
+            drawSpectrum(activeFilters.analyser, 'rgba(255, 255, 0, 0.6)');
+        }
+
+        if (show_output_spectrum) {
+            drawSpectrum(activeFilters.outputAnalyser, 'rgba(0, 255, 255, 0.8)');
+        }
+
+        // 5. Legend
+        ctx.font = '9px sans-serif';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'middle';
+
+        ctx.fillStyle = show_input_spectrum ? 'rgba(255, 255, 0, 0.8)' : 'rgba(100, 100, 0, 0.6)';
+        ctx.fillRect(5, 5, 6, 6);
+        ctx.fillStyle = show_input_spectrum ? '#ddd' : '#666';
+        ctx.fillText('In', 14, 8);
+
+        ctx.fillStyle = show_output_spectrum ? 'rgba(0, 255, 255, 0.8)' : 'rgba(0, 100, 100, 0.6)';
+        ctx.fillRect(32, 5, 6, 6);
+        ctx.fillStyle = show_output_spectrum ? '#ddd' : '#666';
+        ctx.fillText('Out', 41, 8);
+
+        // 6. Frequency Axis
+        ctx.fillStyle = '#fff';
+        ctx.font = '9px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+
+        const axisFreqs = [100, 200, 500, 1000, 2000, 4000, 8000, 12000, 16000].filter(f => f <= maxFreq);
+        ctx.beginPath();
+        axisFreqs.forEach(f => {
+            const x = freqToX(f);
+            ctx.moveTo(x, h);
+            ctx.lineTo(x, h - 4);
+            let txt = (f >= 1000) ? (f/1000) + 'k' : f;
+            ctx.fillText(txt, x, h - 4);
+        });
+        ctx.strokeStyle = '#555';
+        ctx.stroke();
+
+        // Tooltip
+        if (mouseX && mouseX > 0) {
+            let hovered = null;
+
+            if (is_autonotch_enabled) {
+                let effectiveNotchRange = (override_settings.notchRange !== null && override_settings.notchRange !== undefined) ? override_settings.notchRange : 4000;
+                let effectiveNotchCenter = (override_settings.notchCenter !== null && override_settings.notchCenter !== undefined) ? override_settings.notchCenter : (effectiveNotchRange / 2);
+                let halfWidth = effectiveNotchRange / 2;
+                let startFreq = Math.max(50, effectiveNotchCenter - halfWidth);
+                let endFreq = effectiveNotchCenter + halfWidth;
+                const x1 = freqToX(startFreq);
+                const x2 = freqToX(endFreq);
+                if (mouseX >= x1 && mouseX <= x2) hovered = "Notch Range";
+            }
+
+            if (is_filter_enabled && activeFilters.peaking && Math.abs(activeFilters.peaking.gain.value) > 0.1) {
+                const f_c = activeFilters.peaking.frequency.value;
+                const Q = activeFilters.peaking.Q.value;
+                const term1 = Math.sqrt(1 + 1 / (4 * Q * Q));
+                const term2 = 1 / (2 * Q);
+                const f1 = f_c * (term1 - term2);
+                const f2 = f_c * (term1 + term2);
+                const x1 = freqToX(f1);
+                const x2 = freqToX(f2);
+                if (mouseX >= x1 && mouseX <= x2) {
+                    hovered = "Presence Range";
+                }
+            }
+
+            const check = (x, label) => {
+                if (Math.abs(x - mouseX) < 5) hovered = label;
+            };
+
+            if (is_compressor_enabled) {
+                let modKey = get_config_mode(last_modulation);
+                let base = CONFIG[modKey];
+                const compHPF = (override_settings.compHPF !== null && override_settings.compHPF !== undefined) ? override_settings.compHPF : (base.compHPF || 300);
+                const compLPF = (override_settings.compLPF !== null && override_settings.compLPF !== undefined) ? override_settings.compLPF : (base.compLPF || 3000);
+                const xHPF = freqToX(compHPF);
+                const xLPF = freqToX(compLPF);
+                if (mouseX >= xHPF && mouseX <= xLPF) hovered = "Comp Range";
+            }
+
+            if (is_filter_enabled && activeFilters.highpass && activeFilters.lowpass) {
+                check(freqToX(activeFilters.highpass.frequency.value), `EQ Highpass: ${Math.round(activeFilters.highpass.frequency.value)}Hz`);
+                check(freqToX(activeFilters.lowpass.frequency.value), `EQ Lowpass: ${Math.round(activeFilters.lowpass.frequency.value)}Hz`);
+            }
+
+            if (hovered) {
+                ctx.font = '10px sans-serif';
+                const tw = ctx.measureText(hovered).width;
+                const tx = Math.min(Math.max(mouseX - tw / 2, 0), w - tw - 4);
+                const ty = 20;
+
+                ctx.fillStyle = 'rgba(0,0,0,0.8)';
+                ctx.fillRect(tx - 2, ty - 10, tw + 4, 14);
+                ctx.fillStyle = '#fff';
+                ctx.textAlign = 'left';
+                ctx.fillText(hovered, tx, ty);
+            }
+        }
+    }
+
+    let plugin_button = null;
+    let window_created = false;
+
+    function create_ui() {
+        if (typeof Plugins !== 'undefined' && typeof Plugins.addButton === 'function') {
+            if (!plugin_button) {
+                plugin_button = Plugins.addButton(PLUGIN_ID, 'AF', on_plugin_button_click);
+                if (plugin_button) {
+                    plugin_button.title = 'Audio Filter Controls (EQ, NR, NB, Comp, Notch)';
+                }
+            }
+            if (!window_created) {
+                create_mini_window();
+            }
+            update_fil_button_state();
+            return true;
+        }
+
+        return create_fallback_ui();
+    }
+
+    function on_plugin_button_click() {
+        if (!window_created) {
+            create_mini_window();
+        }
+        if (typeof Plugins !== 'undefined' && typeof Plugins.toggleWindow === 'function') {
+            Plugins.toggleWindow(PLUGIN_ID);
+        } else {
+            var win = document.getElementById('plugin-window-' + PLUGIN_ID);
+            if (win) {
+                win.style.display = (win.style.display === 'none' || !win.style.display) ? 'flex' : 'none';
+            }
+        }
+        var win = document.getElementById('plugin-window-' + PLUGIN_ID);
+        var isVisible = win && (typeof $ !== 'undefined' ? $(win).is(':visible') : win.style.display !== 'none');
+        if (isVisible && document.getElementById('audio-filter-graph-check') && document.getElementById('audio-filter-graph-check').checked) {
+            if (typeof window.startMainGraphLoop === 'function') {
+                window.startMainGraphLoop();
+            }
+        }
+        update_fil_button_state();
+    }
+
+    function create_mini_window() {
+        if (window_created) return;
+
+        var winElem = null;
+        if (typeof Plugins !== 'undefined' && typeof Plugins.addWindow === 'function') {
+            winElem = Plugins.addWindow(PLUGIN_ID, 'Audio Filter');
+        }
+        if (!winElem) return;
+
+        if (typeof LS !== 'undefined') {
+            const name = 'plugin_' + PLUGIN_ID;
+            if (!LS.has(name + '_w')) {
+                winElem.style.width = '375px';
+            }
+        }
+
+        var $win = $(winElem);
+        $win.find('.openwebrx-plugin-close').on('click touchend', () => {
+            setTimeout(update_fil_button_state, 50);
+        });
+
+        var body = winElem.querySelector('.openwebrx-plugin-body');
+        if (!body) body = winElem;
+        body.style.padding = '6px';
+        body.style.overflow = 'hidden';
+
+        build_filter_controls(body);
+
+        window_created = true;
+    }
+
+    function build_filter_controls(container) {
+        var content = document.createElement('div');
+        content.style.padding = '2px';
+
+        var btnContainer = document.createElement('div');
+        btnContainer.style.cssText = 'display: flex; gap: 4px; flex-wrap: wrap; justify-content: space-evenly;';
+
+        function createBtn(label, title, hasMenu, isActiveFn, onClick, onLongPress) {
+            var btn = document.createElement('button');
+            btn.style.cssText = 'position: relative; width: 45px; height: 32px; padding: 0; line-height: 32px; font-size: 11px; font-weight: 600; border: none; border-radius: 5px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: all 0.3s ease; background: #444; color: #fff; user-select: none; -webkit-user-select: none;';
+            btn.title = title;
+
+            function update() {
+                var active = isActiveFn ? isActiveFn() : false;
+                var html = label;
+                if (hasMenu) html += '<span style="position: absolute; top: 2px; right: 3px; height: 9px; line-height: 9px; font-size: 9px; opacity: 0.7;">&#9698;</span>';
+                btn.innerHTML = html;
+                if (active) {
+                    btn.style.background = '#39FF14';
+                    btn.style.color = 'black';
+                } else {
+                    btn.style.background = '#444';
+                    btn.style.color = '#fff';
+                }
+            }
+            update();
+
+            if (onLongPress) {
+                var pressTimer;
+                var longPressTriggered = false;
+                var start = function(e) {
+                    if (e.type === 'mousedown' && e.button !== 0) return;
+                    longPressTriggered = false;
+                    pressTimer = setTimeout(function() {
+                        longPressTriggered = true;
+                        onLongPress(btn.getBoundingClientRect());
+                    }, 600);
+                };
+                var end = function(e) {
+                    if (pressTimer) clearTimeout(pressTimer);
+                    if (!longPressTriggered) {
+                        if (e.type === 'touchend') e.preventDefault();
+                        onClick();
+                        update();
+                        update_fil_button_state();
+                    }
+                };
+                btn.addEventListener('mousedown', start);
+                btn.addEventListener('mouseup', end);
+                btn.addEventListener('mouseleave', function() { if (pressTimer) clearTimeout(pressTimer); });
+                btn.addEventListener('touchstart', start, {passive: true});
+                btn.addEventListener('touchend', end);
+            } else {
+                btn.onclick = function() {
+                    onClick();
+                    update();
+                    update_fil_button_state();
+                };
+            }
+            return { element: btn, update: update };
+        }
+
+        var btnNB = createBtn('NB', 'Enable/Disable Noise Blanker.', false, () => is_nb_enabled, () => {
+            is_nb_enabled = !is_nb_enabled;
+            localStorage.setItem('openwebrx-audio-filter-declick', is_nb_enabled);
+            apply_filter_settings();
+        }).element;
+
+        var btnHum = createBtn('Hum', 'Enable/Disable mains hum filter. Long press for 50/60 Hz settings.', true, () => is_hum_filter_enabled, () => {
+            is_hum_filter_enabled = !is_hum_filter_enabled;
+            localStorage.setItem('openwebrx-audio-filter-hum', is_hum_filter_enabled);
+            apply_filter_settings();
+        }, (rect) => show_hum_menu(rect)).element;
+
+        var btnNotch = createBtn('Notch', 'Enable/Disable Auto Notch. Long press for settings.', true, () => is_autonotch_enabled, () => {
+            is_autonotch_enabled = !is_autonotch_enabled;
+            localStorage.setItem('openwebrx-audio-filter-autonotch', is_autonotch_enabled);
+            if (!is_autonotch_enabled) window.AudioFilterModules.autoNotch.disable(activeFilters.notches);
+        }, (rect) => show_notch_menu(rect)).element;
+
+        var btnNR = createBtn('NR', 'Enable/Disable Noise Reduction. Long press for settings.', true, () => is_nr_enabled, () => {
+            is_nr_enabled = !is_nr_enabled;
+            localStorage.setItem('openwebrx-audio-filter-nr', is_nr_enabled);
+            apply_filter_settings();
+            if (is_nr_enabled && activeFilters.reset_nr) activeFilters.reset_nr();
+        }, (rect) => show_nr_menu(rect)).element;
+
+        var btnEq = createBtn('EQ', 'Enable/Disable Equalizer. Long press for settings.', true, () => is_filter_enabled, () => {
+            is_filter_enabled = !is_filter_enabled;
+            localStorage.setItem('openwebrx-audio-filter-enabled', is_filter_enabled);
+            apply_filter_settings();
+        }, (rect) => show_eq_menu(rect)).element;
+
+        var btnComp = createBtn('Comp', 'Enable/Disable Compressor. Long press for settings.', true, () => is_compressor_enabled, () => {
+            is_compressor_enabled = !is_compressor_enabled;
+            localStorage.setItem('openwebrx-audio-filter-compressor', is_compressor_enabled);
+            apply_filter_settings();
+        }, (rect) => show_comp_menu(rect)).element;
+
+        var btnExpander = createBtn('Exp', 'Enable/Disable speech expander. Long press for settings.', true, () => is_expander_enabled, () => {
+            is_expander_enabled = !is_expander_enabled;
+            localStorage.setItem('openwebrx-audio-filter-expander', is_expander_enabled);
+            apply_filter_settings();
+        }, (rect) => show_expander_menu(rect)).element;
+
+        var btnLimiter = createBtn('Lim', 'Enable/Disable output limiter. Long press for settings.', true, () => is_limiter_enabled, () => {
+            is_limiter_enabled = !is_limiter_enabled;
+            localStorage.setItem('openwebrx-audio-filter-limiter', is_limiter_enabled);
+            apply_filter_settings();
+        }, (rect) => show_limiter_menu(rect)).element;
+
+        let nr_resync_token = 0;
+        function schedule_nr_resync() {
+            if (!is_nr_enabled || !activeFilters.reset_nr) return;
+            const token = ++nr_resync_token;
+            setTimeout(function () {
+                if (token === nr_resync_token && is_nr_enabled && activeFilters.reset_nr) activeFilters.reset_nr();
+            }, 600);
+        }
+
+        function select_ai_engine(name) {
+            if (dtln.engine === name && is_dtln_enabled) {
+                is_dtln_enabled = false;
+                dtln.enabled = false;
+            } else {
+                dtln.engine = name;
+                is_dtln_enabled = true;
+                dtln.enabled = true;
+            }
+            localStorage.setItem('openwebrx-audio-filter-ai-engine', is_dtln_enabled ? name : 'none');
+            if (dtln.ioPort) dtln.ioPort.postMessage({ type: 'settings', enabled: dtln.enabled });
+            if (is_dtln_enabled) {
+                dtln_reset_runtime();
+                ai_ensure_loaded();
+            }
+            schedule_nr_resync();
+        }
+
+        var btnAiObj = createBtn('AI', 'Enable/Disable AI Speech Enhancement (DTLN, best for AM). Long press for settings.', true, () => is_dtln_enabled && dtln.engine === 'dtln', () => select_ai_engine('dtln'), (rect) => show_dtln_menu(rect));
+        var btnRnObj = createBtn('RN', 'Enable/Disable AI Speech Enhancement (RNNoise). Long press for settings.', true, () => is_dtln_enabled && dtln.engine === 'rnnoise', () => select_ai_engine('rnnoise'), (rect) => show_rnnoise_menu(rect));
+        dtln.buttons.dtln = btnAiObj;
+        dtln.buttons.rnnoise = btnRnObj;
+
+        btnContainer.appendChild(btnNB);
+        btnContainer.appendChild(btnHum);
+        btnContainer.appendChild(btnNotch);
+        btnContainer.appendChild(btnNR);
+        btnContainer.appendChild(btnEq);
+        btnContainer.appendChild(btnComp);
+        var controlRowBreak = document.createElement('div');
+        controlRowBreak.style.cssText = 'flex: 0 0 100%; height: 0;';
+        btnContainer.appendChild(controlRowBreak);
+        btnContainer.appendChild(btnAiObj.element);
+        btnContainer.appendChild(btnRnObj.element);
+        btnContainer.appendChild(btnExpander);
+        btnContainer.appendChild(btnLimiter);
+
+        var btnSet = document.createElement('button');
+        btnSet.style.cssText = 'position: relative; width: 45px; height: 32px; padding: 0; line-height: 32px; font-size: 11px; font-weight: 600; border: none; border-radius: 5px; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: all 0.3s ease; background: #444; color: #fff; user-select: none; -webkit-user-select: none;';
+        btnSet.title = 'Plugin Settings (Import/Export)';
+        btnSet.innerHTML = 'Set<span style="position: absolute; right: 3px; bottom: 2px; font-size: 9px; opacity: 0.7;">&#9698;</span>';
+        btnSet.onclick = function() {
+            show_settings_menu(btnSet.getBoundingClientRect());
+        };
+        btnContainer.appendChild(btnSet);
+
+        var divGraph = document.createElement('div');
+        divGraph.style.cssText = 'display: flex; flex-direction: column; align-items: center; justify-content: center; width: 40px; cursor: pointer; background: #222; border-radius: 4px; border: 1px solid #444; height: 32px; user-select: none; -webkit-user-select: none;';
+        divGraph.title = 'Show Visualizer';
+
+        var lblGraph = document.createElement('span');
+        lblGraph.textContent = 'Graph';
+        lblGraph.style.cssText = 'font-size: 9px; color: #ccc; line-height: 10px; margin-bottom: 1px;';
+
+        var chkGraph = document.createElement('input');
+        chkGraph.type = 'checkbox';
+        chkGraph.id = 'audio-filter-graph-check';
+        chkGraph.style.cursor = 'pointer';
+        chkGraph.style.margin = '0';
+
+        if (localStorage.getItem('openwebrx-audio-filter-show-graph') === 'true') {
+            chkGraph.checked = true;
+        }
+
+        divGraph.appendChild(lblGraph);
+        divGraph.appendChild(chkGraph);
+
+        divGraph.onclick = function(e) {
+            if (e.target !== chkGraph) {
+                chkGraph.checked = !chkGraph.checked;
+                if (chkGraph.onchange) chkGraph.onchange();
+            }
+        };
+
+        btnContainer.appendChild(divGraph);
+        content.appendChild(btnContainer);
+
+        var graphContainer = document.createElement('div');
+        graphContainer.id = 'audio-filter-main-graph';
+        graphContainer.style.cssText = 'display: none; margin-top: 5px; border-top: 1px solid #444; padding-top: 5px;';
+
+        var mainCanvas = document.createElement('canvas');
+        mainCanvas.width = 350;
+        mainCanvas.height = 110;
+        mainCanvas.style.cssText = 'background: #181818; border-radius: 3px; border: 1px solid #333; display: block; width: 100%; box-sizing: border-box;';
+        graphContainer.appendChild(mainCanvas);
+        content.appendChild(graphContainer);
+
+        var mainCtx = mainCanvas.getContext('2d');
+        var mainLoopId;
+        var mouseX = -1, mouseY = -1;
+
+        mainCanvas.addEventListener('click', function(e) {
+            var rect = mainCanvas.getBoundingClientRect();
+            var clickX = e.clientX - rect.left;
+            var clickY = e.clientY - rect.top;
+
+            if (clickX >= 5 && clickX <= 30 && clickY >= 2 && clickY <= 14) {
+                show_input_spectrum = !show_input_spectrum;
+                localStorage.setItem('openwebrx-audio-filter-show-in-spec', show_input_spectrum);
+            }
+
+            if (clickX >= 32 && clickX <= 60 && clickY >= 2 && clickY <= 14) {
+                show_output_spectrum = !show_output_spectrum;
+                localStorage.setItem('openwebrx-audio-filter-show-out-spec', show_output_spectrum);
+            }
+        });
+
+        mainCanvas.addEventListener('mousemove', function(e) {
+            var rect = mainCanvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+            if ((mouseX >= 5 && mouseX <= 30 && mouseY >= 2 && mouseY <= 14) ||
+                (mouseX >= 32 && mouseX <= 60 && mouseY >= 2 && mouseY <= 14)) {
+                mainCanvas.style.cursor = 'pointer';
+            } else {
+                mainCanvas.style.cursor = 'default';
+            }
+        });
+        mainCanvas.addEventListener('mouseleave', function() {
+            mouseX = -1; mouseY = -1;
+            mainCanvas.style.cursor = 'default';
+        });
+
+        window.startMainGraphLoop = function() {
+            if (mainLoopId) cancelAnimationFrame(mainLoopId);
+            let lastDraw = 0;
+            const interval = 40; // ~25 FPS
+
+            function loop(timestamp) {
+                var win = document.getElementById('plugin-window-' + PLUGIN_ID);
+                var fallbackPanel = document.getElementById('audio-filter-floating-panel');
+                var isVisible = false;
+                if (win) {
+                    isVisible = (typeof $ !== 'undefined') ? $(win).is(':visible') : (win.style.display !== 'none');
+                } else if (fallbackPanel) {
+                    isVisible = fallbackPanel.style.display !== 'none';
+                }
+
+                if (!chkGraph.checked || !isVisible) return;
+                if (document.hidden) return;
+                mainLoopId = requestAnimationFrame(loop);
+                if (timestamp - lastDraw >= interval) {
+                    lastDraw = timestamp;
+                    draw_comp_visualization(mainCtx, mainCanvas.width, mainCanvas.height, mouseX, mouseY);
+                }
+            }
+            requestAnimationFrame(loop);
+        };
+
+        document.addEventListener('visibilitychange', function() {
+            var win = document.getElementById('plugin-window-' + PLUGIN_ID);
+            var fallbackPanel = document.getElementById('audio-filter-floating-panel');
+            var isVisible = false;
+            if (win) {
+                isVisible = (typeof $ !== 'undefined') ? $(win).is(':visible') : (win.style.display !== 'none');
+            } else if (fallbackPanel) {
+                isVisible = fallbackPanel.style.display !== 'none';
+            }
+            if (!document.hidden && chkGraph.checked && isVisible) {
+                startMainGraphLoop();
+            }
+        });
+
+        chkGraph.onchange = function() {
+            localStorage.setItem('openwebrx-audio-filter-show-graph', chkGraph.checked);
+            if (chkGraph.checked) {
+                graphContainer.style.display = 'block';
+                startMainGraphLoop();
+            } else {
+                graphContainer.style.display = 'none';
+                if (mainLoopId) cancelAnimationFrame(mainLoopId);
+            }
+        };
+
+        if (chkGraph.checked) {
+            graphContainer.style.display = 'block';
+        }
+
+        container.appendChild(content);
+    }
+
+    function create_fallback_ui() {
+        var container = document.querySelector('#openwebrx-panel-receiver');
+        if (!container) return false;
+
+        if (!document.getElementById('audio-filter-toggle-btn')) {
+            var toggleBtn = document.createElement('div');
+            toggleBtn.id = 'audio-filter-toggle-btn';
+            toggleBtn.textContent = 'AF';
+            toggleBtn.title = 'Open Audio Filter Controls';
+            toggleBtn.style.cssText = 'position: absolute; bottom: 3px; left: 4px; z-index: 99; font-size: 12px; font-weight: bold; color: #aaa; cursor: pointer; background: rgba(0,0,0,0.5); padding: 0px 4px; border-radius: 3px; border: 1px solid #666; user-select: none; line-height: 12px; transition: left 0.2s;';
+
+            toggleBtn.onclick = function() {
+                var panel = document.getElementById('audio-filter-floating-panel');
+                if (!panel) return;
+                if (panel.style.display === 'none') {
+                    panel.style.display = 'block';
+                } else {
+                    panel.style.display = 'none';
+                }
+                update_fil_button_state();
+                if (panel.style.display !== 'none' && document.getElementById('audio-filter-graph-check').checked) {
+                    startMainGraphLoop();
+                }
+            };
+
+            container.appendChild(toggleBtn);
+
+            var af_update_pos = function() {
+                var btn = document.getElementById('audio-filter-toggle-btn');
+                if (!btn) return;
+                var cont = document.querySelector('#openwebrx-panel-receiver');
+                if (!cont) return;
+
+                var allButtons = Array.from(cont.querySelectorAll('div[id$="-toggle-btn"], div[id$="-btn"], div[id="openwebrx-clock-utc"]'))
+                    .filter(b => b.offsetParent !== null);
+
+                allButtons.sort((a, b) => {
+                    if (a.id === 'openwebrx-clock-utc') return -1;
+                    if (b.id === 'openwebrx-clock-utc') return 1;
+                    return a.id.localeCompare(b.id);
+                });
+
+                var left = 4;
+                for (var i = 0; i < allButtons.length; i++) {
+                    var currentBtn = allButtons[i];
+                    if (currentBtn.id === btn.id) {
+                        break;
+                    }
+                    var rect = currentBtn.getBoundingClientRect();
+                    if (rect.width > 0) {
+                        left += rect.width + 4;
+                    }
+                }
+
+                btn.style.left = left + 'px';
+            };
+            setInterval(af_update_pos, 1000);
+            af_update_pos();
+        }
+
+        if (!document.getElementById('audio-filter-floating-panel')) {
+            var panel = document.createElement('div');
+            panel.id = 'audio-filter-floating-panel';
+            panel.style.cssText = 'display: none; position: fixed; top: 200px; left: 10px; background: rgba(30,30,30,0.95); border: 1px solid #666; border-radius: 5px; padding: 0; z-index: 10000; box-shadow: 0 0 10px rgba(0,0,0,0.5); font-family: sans-serif;';
+
+            var dragHandle = document.createElement('div');
+            dragHandle.textContent = 'Audio Filter';
+            dragHandle.style.cssText = 'height: 18px; line-height: 18px; font-size: 11px; color: #ddd; text-align: center; background: #444; cursor: move; border-radius: 5px 5px 0 0; width: 100%; border-bottom: 1px solid #555; user-select: none;';
+            dragHandle.title = 'Drag to move';
+            panel.appendChild(dragHandle);
+
+            var isDragging = false;
+            var dragOffsetX = 0;
+            var dragOffsetY = 0;
+
+            var startDrag = function(e) {
+                isDragging = true;
+                var clientX = e.clientX;
+                var clientY = e.clientY;
+                if (e.touches && e.touches.length > 0) {
+                    clientX = e.touches[0].clientX;
+                    clientY = e.touches[0].clientY;
+                }
+                dragOffsetX = clientX - panel.offsetLeft;
+                dragOffsetY = clientY - panel.offsetTop;
+                e.preventDefault();
+            };
+
+            var doDrag = function(e) {
+                if (isDragging) {
+                    var clientX = e.clientX;
+                    var clientY = e.clientY;
+                    if (e.touches && e.touches.length > 0) {
+                        clientX = e.touches[0].clientX;
+                        clientY = e.touches[0].clientY;
+                    }
+                    panel.style.left = (clientX - dragOffsetX) + 'px';
+                    panel.style.top = (clientY - dragOffsetY) + 'px';
+                    if (e.type === 'touchmove') e.preventDefault();
+                }
+            };
+
+            var stopDrag = function() { isDragging = false; };
+
+            dragHandle.addEventListener('mousedown', startDrag);
+            document.addEventListener('mousemove', doDrag);
+            document.addEventListener('mouseup', stopDrag);
+
+            dragHandle.addEventListener('touchstart', startDrag, {passive: false});
+            document.addEventListener('touchmove', doDrag, {passive: false});
+            document.addEventListener('touchend', stopDrag);
+
+            var panelBody = document.createElement('div');
+            panelBody.style.padding = '5px';
+            build_filter_controls(panelBody);
+
+            panel.appendChild(panelBody);
+            document.body.appendChild(panel);
+        }
+
+        update_fil_button_state();
+        return true;
+    }
+
+    function get_modulation() {
+        if (typeof UI !== 'undefined' && UI.getDemodulator) {
+            var demod = UI.getDemodulator();
+            if (demod && typeof demod.get_modulation === 'function') {
+                return demod.get_modulation();
+            }
+        }
+        return 'ssb'; // Fallback
+    }
+
+    function install_modulation_hook() {
+        if (typeof DemodulatorPanel === 'undefined' || !DemodulatorPanel.prototype ||
+            typeof DemodulatorPanel.prototype.setMode !== 'function') return;
+        const originalSetMode = DemodulatorPanel.prototype.setMode;
+        DemodulatorPanel.prototype.setMode = function () {
+            const result = originalSetMode.apply(this, arguments);
+            check_modulation_loop();
+            return result;
+        };
+    }
+
+    function check_modulation_loop() {
+        let current_mod = get_modulation();
+
+        if (current_mod && current_mod !== last_modulation) {
+            const wasBypassed = is_stereo_bypass(last_modulation);
+            const isBypassed = is_stereo_bypass(current_mod);
+            // Save current settings to store before switching
+            let oldKey = get_config_mode(last_modulation);
+            settings_store[oldKey] = JSON.parse(JSON.stringify(override_settings));
+
+            last_modulation = current_mod;
+            if (wasBypassed !== isBypassed && activeFilters.inputProxy && activeFilters.outputAnalyser) {
+                connectFilterChain(activeFilters.inputProxy.context);
+            }
+
+            // Reset NR state before applying new settings for the new mode
+            if (is_nr_enabled && activeFilters.reset_nr) {
+                activeFilters.reset_nr();
+            }
+            if (dtln.enabled && dtln.ready) {
+                dtln_reset_runtime();
+            }
+
+            // Load settings for new mode
+            let newKey = get_config_mode(current_mod);
+            if (settings_store[newKey]) {
+                override_settings = JSON.parse(JSON.stringify(settings_store[newKey]));
+            } else {
+                override_settings = create_empty_settings();
+            }
+            apply_filter_settings();
+            saveSettings();
+        }
+    }
+
+    function ai_mode_defaults() {
+        if (get_config_mode(last_modulation) === 'ssb') {
+            return { dtlnFloor: 0.30, dtlnMix: 0.65, rnTarget: 0.30, rnBoost: 40, rnMix: 0.30 };
+        }
+        return { dtlnFloor: 0.15, dtlnMix: 0.85, rnTarget: 0.70, rnBoost: 60, rnMix: 0.85 };
+    }
+
+    function apply_filter_settings() {
+        let settings;
+        let effectiveHP, effectiveLP, effectivePeakGain, effectivePeakFreq, effectivePeakQ, effectiveGain, effectiveNotchQ, effectiveCompHPF, effectiveCompLPF;
+        let dynSettings = {};
+
+        let modKey = get_config_mode(last_modulation);
+        let baseSettings = CONFIG[modKey];
+        const aiDefaults = ai_mode_defaults();
+        effectiveNotchQ = (override_settings.notchQ !== null && override_settings.notchQ !== undefined) ? override_settings.notchQ : (baseSettings.notchQ || 30);
+
+        let effectiveAirGain = (override_settings.airGain !== null && override_settings.airGain !== undefined) ? override_settings.airGain : (baseSettings.airGain !== undefined ? baseSettings.airGain : 0);
+        let effectiveAirFreq = (override_settings.airFreq !== null && override_settings.airFreq !== undefined) ? override_settings.airFreq : (baseSettings.airFreq !== undefined ? baseSettings.airFreq : 12000);
+
+        effectiveCompHPF = (override_settings.compHPF !== null && override_settings.compHPF !== undefined) ? override_settings.compHPF : (baseSettings.compHPF || 300);
+        effectiveCompLPF = (override_settings.compLPF !== null && override_settings.compLPF !== undefined) ? override_settings.compLPF : (baseSettings.compLPF || 3000);
+
+        let nrSettings = {
+            enabled: is_nr_enabled,
+            gain: (override_settings.nr_gain !== null && override_settings.nr_gain !== undefined) ? override_settings.nr_gain : (baseSettings.nr_gain || 0),
+            alpha: (override_settings.nr_alpha !== null && override_settings.nr_alpha !== undefined) ? override_settings.nr_alpha : (baseSettings.nr_alpha || 0.95),
+            snr: (override_settings.nr_snr !== null && override_settings.nr_snr !== undefined) ? override_settings.nr_snr : (baseSettings.nr_snr || 10),
+            comb: (override_settings.nr_comb !== null && override_settings.nr_comb !== undefined) ? override_settings.nr_comb : (baseSettings.nr_comb !== undefined ? baseSettings.nr_comb : 0.5),
+            speech_mode: (override_settings.nr_speech_mode !== null && override_settings.nr_speech_mode !== undefined) ? override_settings.nr_speech_mode : (baseSettings.nr_speech_mode !== undefined ? baseSettings.nr_speech_mode : false)
+        };
+
+        dynSettings = {
+            nb_enabled: is_nb_enabled,
+            comp_enabled: is_compressor_enabled,
+            expander_enabled: is_expander_enabled,
+            expanderThresholdDb: override_settings.expanderThresholdDb !== null && override_settings.expanderThresholdDb !== undefined ? override_settings.expanderThresholdDb : -52,
+            expanderFloorDb: override_settings.expanderFloorDb !== null && override_settings.expanderFloorDb !== undefined ? override_settings.expanderFloorDb : -18,
+            expanderRatio: override_settings.expanderRatio !== null && override_settings.expanderRatio !== undefined ? override_settings.expanderRatio : 1.8,
+            limiter_enabled: is_limiter_enabled,
+            limiterCeilingDb: override_settings.limiterCeilingDb !== null && override_settings.limiterCeilingDb !== undefined ? override_settings.limiterCeilingDb : -1,
+            agcTarget: baseSettings.agcTarget,
+            maxBoost: (override_settings.maxBoost !== null && override_settings.maxBoost !== undefined) ? override_settings.maxBoost : baseSettings.maxBoost,
+            gateThresh: (override_settings.gateThresh !== null && override_settings.gateThresh !== undefined) ? override_settings.gateThresh : 0.0025,
+            hangTime: (override_settings.hangTime !== null && override_settings.hangTime !== undefined) ? override_settings.hangTime : 0.2,
+            recoveryTime: (override_settings.recoveryTime !== null && override_settings.recoveryTime !== undefined) ? override_settings.recoveryTime : 0.5,
+            compGain: (override_settings.compGain !== null && override_settings.compGain !== undefined) ? override_settings.compGain : 0.10,
+            sampleRate: activeFilters.gain ? activeFilters.gain.context.sampleRate : 48000
+        };
+
+        if (!is_filter_enabled) {
+            // Bypass / Neutral (Filter disabled)
+            let maxFreq = 22000;
+            if (activeFilters.lowpass && activeFilters.lowpass.context) {
+                maxFreq = (activeFilters.lowpass.context.sampleRate / 2) - 100;
+            }
+            settings = { gain: 1.0 };
+            effectiveHP = 0;
+            effectiveLP = maxFreq;
+            effectivePeakGain = 0;
+            effectiveGain = 1.0;
+            effectivePeakFreq = 2000;
+            effectivePeakQ = 1.0;
+
+            if (is_nr_enabled && get_config_mode(last_modulation) === 'am') {
+                effectivePeakGain = 6.0;
+                effectivePeakFreq = 500;
+                effectivePeakQ = 1.0;
+            }
+        } else {
+            settings = baseSettings;
+            effectiveHP = (override_settings.highpassFreq !== null) ? override_settings.highpassFreq : settings.highpassFreq;
+            effectiveLP = (override_settings.lowpassFreq !== null) ? override_settings.lowpassFreq : settings.lowpassFreq;
+            effectivePeakGain = (override_settings.peakingGain !== null) ? override_settings.peakingGain : (settings.peakingGain || 0);
+            effectivePeakFreq = (override_settings.peakingFreq !== null && override_settings.peakingFreq !== undefined) ? override_settings.peakingFreq : (settings.peakingFreq || 2000);
+            effectivePeakQ = (override_settings.peakingQ !== null && override_settings.peakingQ !== undefined) ? override_settings.peakingQ : (settings.peakingQ || 1.0);
+            effectiveGain = settings.gain; // Fixed gain
+        }
+
+        activeFilters.dynamicsSettings = dynSettings;
+        activeFilters.nrSettings = nrSettings;
+        dtln.gainDb = (override_settings.dtln_gain !== null && override_settings.dtln_gain !== undefined) ? override_settings.dtln_gain : 0;
+        dtln.maskFloor = (override_settings.dtln_floor !== null && override_settings.dtln_floor !== undefined) ? override_settings.dtln_floor : aiDefaults.dtlnFloor;
+        dtln.presence = (dtln.engine === 'dtln') ? ((override_settings.dtln_presence !== null && override_settings.dtln_presence !== undefined) ? override_settings.dtln_presence : 0.3) : 0;
+        dtln.wetMix = (override_settings.dtln_mix !== null && override_settings.dtln_mix !== undefined) ? override_settings.dtln_mix : aiDefaults.dtlnMix;
+        dtln.rnTarget = (override_settings.rn_target !== null && override_settings.rn_target !== undefined) ? override_settings.rn_target : aiDefaults.rnTarget;
+        dtln.rnMaxBoost = (override_settings.rn_boost !== null && override_settings.rn_boost !== undefined) ? override_settings.rn_boost : aiDefaults.rnBoost;
+        dtln.rnWetMix = (override_settings.rn_mix !== null && override_settings.rn_mix !== undefined) ? override_settings.rn_mix : aiDefaults.rnMix;
+        const humFrequency = override_settings.humFrequency !== null && override_settings.humFrequency !== undefined ? override_settings.humFrequency : 50;
+        const humHarmonics = override_settings.humHarmonics !== null && override_settings.humHarmonics !== undefined ? override_settings.humHarmonics : 4;
+        window.AudioFilterModules.humFilter.apply(activeFilters.humFilters, is_hum_filter_enabled, humFrequency, humHarmonics, activeFilters.gain ? activeFilters.gain.context.sampleRate : 48000);
+        const workletSettings = Object.assign({}, dynSettings, nrSettings);
+        [activeFilters.nbProcessor, activeFilters.nrProcessor, activeFilters.compProcessor, activeFilters.expanderProcessor, activeFilters.limiterProcessor].forEach(function (processor) {
+            if (processor && processor.port) {
+                processor.port.postMessage({ type: 'settings', value: workletSettings });
+            }
+        });
+
+        let finalAirGain = is_compressor_enabled ? effectiveAirGain : 0;
+        if (!is_filter_enabled && is_nr_enabled && get_config_mode(last_modulation) === 'am') {
+            finalAirGain = 5.0;
+        }
+        window.AudioFilterModules.equalizer.apply(activeFilters, {
+            highpass: effectiveHP,
+            lowpass: effectiveLP,
+            gain: effectiveGain,
+            loudnessGain: ((is_filter_enabled && is_loudness_enabled) || (is_nr_enabled && get_config_mode(last_modulation) === 'am')) ? 12 : 0,
+            updatePeaking: is_filter_enabled || (is_nr_enabled && get_config_mode(last_modulation) === 'am'),
+            peakingFreq: effectivePeakFreq,
+            peakingQ: effectivePeakQ,
+            peakingGain: effectivePeakGain,
+            airGain: finalAirGain,
+            airFreq: effectiveAirFreq
+        });
+
+        if (activeFilters.compHighpass && activeFilters.compLowpass) {
+            if (is_compressor_enabled) {
+                activeFilters.compHighpass.frequency.value = effectiveCompHPF;
+                activeFilters.compLowpass.frequency.value = effectiveCompLPF;
+            } else {
+                activeFilters.compHighpass.frequency.value = 0;
+                activeFilters.compLowpass.frequency.value = (activeFilters.compLowpass.context.sampleRate / 2) - 100;
+            }
+        }
+
+        if (activeFilters.notches) window.AudioFilterModules.autoNotch.setSharpness(activeFilters.notches, effectiveNotchQ);
+
+    }
+
+    function process_audio_analysis() {
+        if (!activeFilters.analyser || !is_autonotch_enabled) return;
+        window.AudioFilterModules.autoNotch.process(
+            activeFilters.analyser,
+            activeFilters.notches,
+            override_settings,
+            activeFilters
+        );
+    }
+
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        setTimeout(initAudioFilter, 100);
+    } else {
+        window.addEventListener('load', initAudioFilter);
+    }
+
+    window.AudioFilterPlugin = {
+        myname: PLUGIN_ID,
+        init: initAudioFilter,
+        toggle: on_plugin_button_click
+    };
+
+    if (typeof Plugins !== 'undefined' && Plugins.audio_filter) {
+        Plugins.audio_filter.no_css = true;
+        Plugins.audio_filter._version = 1.0;
+        Plugins.audio_filter.init = function() {
+            initAudioFilter();
+            return true;
+        };
+    }
+
+    function createFloatingMenu(id, titleText, rect, width, buildContentFn) {
+        var existing = document.getElementById(id);
+        if (existing) existing.remove();
+
+        var menu = document.createElement('div');
+        menu.id = id;
+        menu.style.cssText = 'position: fixed; background: #222; border: 1px solid #444; color: #eee; z-index: 10001; border-radius: 4px; padding: 10px; font-family: sans-serif; font-size: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.5); width: ' + width + 'px; visibility: hidden;';
+
+        if (titleText) {
+            var title = document.createElement('div');
+            title.textContent = titleText;
+            title.style.cssText = 'font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #444; padding-bottom: 5px;';
+            menu.appendChild(title);
+        }
+
+        buildContentFn(menu);
+
+        var closeHandler = function(e) {
+            if (!menu.contains(e.target)) {
+                menu.remove();
+                document.removeEventListener('mousedown', closeHandler);
+                document.removeEventListener('touchstart', closeHandler);
+            }
+        };
+
+        setTimeout(function() {
+            document.addEventListener('mousedown', closeHandler);
+            document.addEventListener('touchstart', closeHandler);
+        }, 10);
+
+        document.body.appendChild(menu);
+
+        var menuHeight = menu.offsetHeight;
+        var menuWidth = menu.offsetWidth;
+        var left = rect.left;
+        if (left + menuWidth > window.innerWidth - 5) left = rect.right - menuWidth;
+        if (left < 5) left = 5;
+
+        if (rect.top < menuHeight + 10) menu.style.top = rect.bottom + 5 + 'px';
+        else menu.style.bottom = (window.innerHeight - rect.top) + 5 + 'px';
+
+        menu.style.left = left + 'px';
+        menu.style.visibility = 'visible';
+    }
+
+    function appendFilterSlider(menu, label, key, min, max, step, defaultValue, format) {
+        const value = override_settings[key] !== null && override_settings[key] !== undefined ? override_settings[key] : defaultValue;
+        const row = document.createElement('div');
+        row.style.marginBottom = '8px';
+        const caption = document.createElement('div');
+        const formatValue = format || function (current) { return Number(current).toFixed(1); };
+        caption.textContent = label + ': ' + formatValue(value);
+        caption.style.marginBottom = '2px';
+        const input = document.createElement('input');
+        input.type = 'range';
+        input.min = min;
+        input.max = max;
+        input.step = step;
+        input.value = value;
+        input.style.width = '100%';
+        input.oninput = function () {
+            const current = parseFloat(input.value);
+            caption.textContent = label + ': ' + formatValue(current);
+            override_settings[key] = current;
+            apply_filter_settings();
+        };
+        input.onchange = saveSettings;
+        row.appendChild(caption);
+        row.appendChild(input);
+        menu.appendChild(row);
+    }
+
+    function show_hum_menu(rect) {
+        createFloatingMenu('audio-filter-hum-menu', 'Mains Hum Filter', rect, 210, function (menu) {
+            const frequencyRow = document.createElement('label');
+            frequencyRow.style.cssText = 'display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;';
+            frequencyRow.appendChild(document.createTextNode('Mains frequency'));
+            const frequencySelect = document.createElement('select');
+            [50, 60].forEach(function (frequency) {
+                const option = document.createElement('option');
+                option.value = frequency;
+                option.textContent = frequency + ' Hz';
+                frequencySelect.appendChild(option);
+            });
+            frequencySelect.value = override_settings.humFrequency !== null && override_settings.humFrequency !== undefined ? override_settings.humFrequency : 50;
+            frequencySelect.onchange = function () {
+                override_settings.humFrequency = parseInt(frequencySelect.value, 10);
+                apply_filter_settings();
+                saveSettings();
+            };
+            frequencyRow.appendChild(frequencySelect);
+            menu.appendChild(frequencyRow);
+            appendFilterSlider(menu, 'Harmonics', 'humHarmonics', 1, window.AudioFilterModules.humFilter.maxHarmonics, 1, 4, function (value) { return String(Math.round(value)); });
+        });
+    }
+
+    function show_expander_menu(rect) {
+        createFloatingMenu('audio-filter-expander-menu', 'Speech Expander', rect, 210, function (menu) {
+            appendFilterSlider(menu, 'Threshold (dBFS)', 'expanderThresholdDb', -80, 0, 1, -52, function (value) { return Math.round(value) + ' dB'; });
+            appendFilterSlider(menu, 'Gain floor', 'expanderFloorDb', -36, -6, 1, -18, function (value) { return Math.round(value) + ' dB'; });
+            appendFilterSlider(menu, 'Ratio', 'expanderRatio', 1, 4, 0.1, 1.8, function (value) { return Number(value).toFixed(1) + ':1'; });
+        });
+    }
+
+    function show_limiter_menu(rect) {
+        createFloatingMenu('audio-filter-limiter-menu', 'Output Limiter', rect, 210, function (menu) {
+            appendFilterSlider(menu, 'Ceiling', 'limiterCeilingDb', -36, 0, 0.5, -1, function (value) { return Number(value).toFixed(1) + ' dBFS'; });
+        });
+    }
+
+    function show_eq_menu(rect) {
+        createFloatingMenu('audio-filter-eq-menu', null, rect, 200, function(menu) {
+        let modKey = get_config_mode(last_modulation);
+        let base = CONFIG[modKey];
+        let currentHP = (override_settings.highpassFreq !== null) ? override_settings.highpassFreq : base.highpassFreq;
+        let currentLP = (override_settings.lowpassFreq !== null) ? override_settings.lowpassFreq : base.lowpassFreq;
+        let currentPeak = (override_settings.peakingGain !== null) ? override_settings.peakingGain : base.peakingGain;
+        let currentPeakFreq = (override_settings.peakingFreq !== null && override_settings.peakingFreq !== undefined) ? override_settings.peakingFreq : base.peakingFreq;
+        let currentPeakQ = (override_settings.peakingQ !== null && override_settings.peakingQ !== undefined) ? override_settings.peakingQ : (base.peakingQ || 1.0);
+
+        var sliders = []; // Store update functions for reset
+
+        function createMappedSlider(label, value0to100, onChange, formatFn) {
+            var container = document.createElement('div');
+            container.style.marginBottom = '8px';
+
+            var getLabelText = function(val) {
+                if (formatFn) return label + ': ' + formatFn(val);
+                return label + ': ' + Math.round(val) + '%';
+            };
+
+            var lbl = document.createElement('div');
+            lbl.textContent = getLabelText(value0to100);
+            lbl.style.marginBottom = '2px';
+
+            var inp = document.createElement('input');
+            inp.type = 'range';
+            inp.min = 0;
+            inp.max = 100;
+            inp.value = value0to100;
+            inp.style.width = '100%';
+
+            var updateUI = function(val) {
+                inp.value = val;
+                lbl.textContent = getLabelText(val);
+            };
+            sliders.push(updateUI);
+
+            inp.oninput = function() {
+                lbl.textContent = getLabelText(parseFloat(inp.value));
+                onChange(parseFloat(inp.value));
+            };
+
+            inp.onchange = function() {
+                saveSettings();
+            };
+
+            container.appendChild(lbl);
+            container.appendChild(inp);
+
+            return container;
+        }
+
+        var minBassFreq = 50, maxBassFreq = 1350;
+        var bassPercent = 100 * (maxBassFreq - currentHP) / (maxBassFreq - minBassFreq);
+        if (bassPercent < 0) bassPercent = 0; if (bassPercent > 100) bassPercent = 100;
+
+        menu.appendChild(createMappedSlider('Bass', bassPercent, function(val) {
+            var freq = maxBassFreq - (val / 100) * (maxBassFreq - minBassFreq);
+            override_settings.highpassFreq = freq;
+            apply_filter_settings();
+        }));
+
+        var minTrebFreq = 1500, maxTrebFreq = 13500;
+        var trebPercent = 100 * Math.log(currentLP / minTrebFreq) / Math.log(maxTrebFreq / minTrebFreq);
+        if (trebPercent < 0) trebPercent = 0; if (trebPercent > 100) trebPercent = 100;
+
+        menu.appendChild(createMappedSlider('Treble', trebPercent, function(val) {
+            var freq = minTrebFreq * Math.pow(maxTrebFreq / minTrebFreq, val / 100);
+            override_settings.lowpassFreq = freq;
+            apply_filter_settings();
+        }));
+
+        var presPercent = 100 * currentPeak / 33;
+        if (presPercent < 0) presPercent = 0; if (presPercent > 100) presPercent = 100;
+
+        menu.appendChild(createMappedSlider('Presence', presPercent, function(val) {
+            override_settings.peakingGain = val * 33 / 100;
+            apply_filter_settings();
+        }));
+
+        var minPresFreq = 200, maxPresFreq = 8000;
+        var presFreqPercent = 100 * Math.log(currentPeakFreq / minPresFreq) / Math.log(maxPresFreq / minPresFreq);
+        if (presFreqPercent < 0) presFreqPercent = 0; if (presFreqPercent > 100) presFreqPercent = 100;
+
+        var minQ = 0.5, maxQ = 4.0;
+
+        menu.appendChild(createMappedSlider('Presence Freq', presFreqPercent, function(val) {
+            var freq = minPresFreq * Math.pow(maxPresFreq / minPresFreq, val / 100);
+            override_settings.peakingFreq = freq;
+            apply_filter_settings();
+
+            if (sliders[4]) {
+                var q = (override_settings.peakingQ !== null && override_settings.peakingQ !== undefined) ? override_settings.peakingQ : currentPeakQ;
+                var wPct = 100 * (maxQ - q) / (maxQ - minQ);
+                if (wPct < 0) wPct = 0; if (wPct > 100) wPct = 100;
+                sliders[4](wPct);
+            }
+        }, function(val) {
+            var freq = minPresFreq * Math.pow(maxPresFreq / minPresFreq, val / 100);
+            return Math.round(freq) + 'Hz';
+        }));
+
+        var widthPercent = 100 * (maxQ - currentPeakQ) / (maxQ - minQ);
+        if (widthPercent < 0) widthPercent = 0; if (widthPercent > 100) widthPercent = 100;
+
+        menu.appendChild(createMappedSlider('Presence Width', widthPercent, function(val) {
+            var q = maxQ - (val / 100) * (maxQ - minQ);
+            override_settings.peakingQ = q;
+            apply_filter_settings();
+        }, function(val) {
+            var q = maxQ - (val / 100) * (maxQ - minQ);
+            var freq = (override_settings.peakingFreq !== null && override_settings.peakingFreq !== undefined) ? override_settings.peakingFreq : currentPeakFreq;
+            var bw = freq / q;
+            return Math.round(bw) + 'Hz (Q: ' + q.toFixed(1) + ')';
+        }));
+
+        var loudDiv = document.createElement('div');
+        loudDiv.style.marginTop = '10px';
+        loudDiv.style.borderTop = '1px solid #444';
+        loudDiv.style.paddingTop = '5px';
+
+        var loudLbl = document.createElement('label');
+        loudLbl.style.display = 'flex';
+        loudLbl.style.alignItems = 'center';
+        loudLbl.style.cursor = 'pointer';
+
+        var loudChk = document.createElement('input');
+        loudChk.type = 'checkbox';
+        loudChk.checked = is_loudness_enabled;
+        loudChk.style.marginRight = '8px';
+        loudChk.onchange = function() {
+            is_loudness_enabled = loudChk.checked;
+            localStorage.setItem('openwebrx-audio-filter-loudness', is_loudness_enabled);
+            apply_filter_settings();
+            update_fil_button_state();
+        };
+
+        loudLbl.appendChild(loudChk);
+        loudLbl.appendChild(document.createTextNode('Loudness'));
+        loudDiv.appendChild(loudLbl);
+        menu.appendChild(loudDiv);
+
+        var btnDef = document.createElement('button');
+        btnDef.textContent = 'Default';
+        btnDef.style.cssText = 'margin-top: 10px; width: 100%; height: 24px; background: #444; color: #fff; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; user-select: none; -webkit-user-select: none;';
+        btnDef.onclick = function() {
+            let modKey = get_config_mode(last_modulation);
+            let def = CONFIG[modKey];
+
+            override_settings.highpassFreq = null;
+            override_settings.lowpassFreq = null;
+            override_settings.peakingGain = null;
+            override_settings.peakingFreq = null;
+            override_settings.peakingQ = null;
+            override_settings.nr_gain = null;
+            override_settings.nr_alpha = null;
+            override_settings.nr_snr = null;
+            override_settings.nr_speech_mode = null;
+            if (settings_store[modKey]) {
+                settings_store[modKey].highpassFreq = null;
+                settings_store[modKey].lowpassFreq = null;
+                settings_store[modKey].peakingGain = null;
+                settings_store[modKey].peakingFreq = null;
+                settings_store[modKey].peakingQ = null;
+                settings_store[modKey].nr_gain = null;
+                settings_store[modKey].nr_alpha = null;
+                settings_store[modKey].nr_snr = null;
+                settings_store[modKey].nr_speech_mode = null;
+            }
+
+            is_loudness_enabled = false;
+            localStorage.setItem('openwebrx-audio-filter-loudness', 'false');
+            loudChk.checked = false;
+
+            saveSettings();
+            apply_filter_settings();
+            update_fil_button_state();
+
+            // Update Sliders UI
+            var bassPercent = 100 * (maxBassFreq - def.highpassFreq) / (maxBassFreq - minBassFreq);
+            if (bassPercent < 0) bassPercent = 0; if (bassPercent > 100) bassPercent = 100;
+            sliders[0](bassPercent);
+
+            var trebPercent = 100 * Math.log(def.lowpassFreq / minTrebFreq) / Math.log(maxTrebFreq / minTrebFreq);
+            if (trebPercent < 0) trebPercent = 0; if (trebPercent > 100) trebPercent = 100;
+            sliders[1](trebPercent);
+
+            var presPercent = 100 * (def.peakingGain || 0) / 33;
+            if (presPercent < 0) presPercent = 0; if (presPercent > 100) presPercent = 100;
+            sliders[2](presPercent);
+
+            var presFreqPercent = 100 * Math.log((def.peakingFreq || 2000) / minPresFreq) / Math.log(maxPresFreq / minPresFreq);
+            if (presFreqPercent < 0) presFreqPercent = 0; if (presFreqPercent > 100) presFreqPercent = 100;
+            sliders[3](presFreqPercent);
+
+            var defQ = def.peakingQ || 1.0;
+            var defWidthPercent = 100 * (maxQ - defQ) / (maxQ - minQ);
+            if (defWidthPercent < 0) defWidthPercent = 0; if (defWidthPercent > 100) defWidthPercent = 100;
+            sliders[4](defWidthPercent);
+        };
+        menu.appendChild(btnDef);
+        });
+    }
+
+    function show_comp_menu(rect) {
+        createFloatingMenu('audio-filter-comp-menu', 'Compressor Settings', rect, 220, function(menu) {
+
+        function createSlider(label, key, min, max, step, scale, precision) {
+            var container = document.createElement('div');
+            container.style.marginBottom = '8px';
+
+            var baseSettings = CONFIG[get_config_mode(last_modulation)];
+            var defVal = baseSettings[key];
+            if (defVal === undefined) {
+                 switch(key) {
+                    case 'gateThresh': defVal = 0.0025; break;
+                    case 'hangTime': defVal = 0.2; break;
+                    case 'recoveryTime': defVal = 0.5; break;
+                    case 'compGain': defVal = 0.10; break;
+                    case 'airGain': defVal = 0; break;
+                    case 'airFreq': defVal = 12000; break;
+                    default: defVal = 0;
+                }
+            }
+            var val = (override_settings[key] !== null && override_settings[key] !== undefined) ? override_settings[key] : defVal;
+
+            var lbl = document.createElement('div');
+            var decimals = (precision !== undefined) ? precision : (scale ? 0 : 2);
+            lbl.textContent = label + ': ' + (val * (scale || 1)).toFixed(decimals);
+            lbl.style.marginBottom = '2px';
+
+            var inp = document.createElement('input');
+            inp.type = 'range';
+            inp.min = min;
+            inp.max = max;
+            inp.step = step;
+            inp.value = val;
+            inp.style.width = '100%';
+
+            inp.oninput = function() {
+                var v = parseFloat(inp.value);
+                lbl.textContent = label + ': ' + (v * (scale || 1)).toFixed(decimals);
+                override_settings[key] = v;
+                apply_filter_settings();
+            };
+
+            inp.onchange = function() {
+                saveSettings();
+            };
+
+            container.appendChild(lbl);
+            container.appendChild(inp);
+            return container;
+        }
+
+        function createCustomSlider(label, min, max, step, initialVal, onChange) {
+            var container = document.createElement('div');
+            container.style.marginBottom = '8px';
+
+            var lbl = document.createElement('div');
+            lbl.textContent = label + ': ' + Math.round(initialVal) + 'Hz';
+            lbl.style.marginBottom = '2px';
+
+            var inp = document.createElement('input');
+            inp.type = 'range';
+            inp.min = min;
+            inp.max = max;
+            inp.step = step;
+            inp.value = initialVal;
+            inp.style.width = '100%';
+
+            inp.oninput = function() {
+                var v = parseFloat(inp.value);
+                lbl.textContent = label + ': ' + Math.round(v) + 'Hz';
+                onChange(v);
+            };
+
+            inp.onchange = function() {
+                saveSettings();
+            };
+
+            container.appendChild(lbl);
+            container.appendChild(inp);
+            return {
+                element: container,
+                setRange: function(minValue, maxValue) {
+                    inp.min = minValue;
+                    inp.max = maxValue;
+                },
+                setValue: function(value) {
+                    inp.value = value;
+                    lbl.textContent = label + ': ' + Math.round(value) + 'Hz';
+                }
+            };
+        }
+
+        var eqHint = document.createElement('div');
+        eqHint.textContent = 'Equalizer (Air)';
+        eqHint.style.cssText = 'font-size: 10px; color: #aaa; margin-bottom: 5px; font-weight: 600;';
+        menu.appendChild(eqHint);
+
+        menu.appendChild(createSlider('Air Gain (dB)', 'airGain', 0, 20, 0.5));
+
+        var sep = document.createElement('div');
+        sep.style.cssText = 'border-bottom: 1px solid #444; margin: 8px 0;';
+        menu.appendChild(sep);
+
+        menu.appendChild(createSlider('Max Boost', 'maxBoost', 1.0, 50.0, 1.0));
+        menu.appendChild(createSlider('Gate Threshold', 'gateThresh', 0.000, 0.020, 0.0005, null, 4));
+        menu.appendChild(createSlider('Hang Time (s)', 'hangTime', 0.0, 2.0, 0.1));
+        menu.appendChild(createSlider('Recovery (s)', 'recoveryTime', 0.1, 5.0, 0.1));
+        menu.appendChild(createSlider('Comp Volume', 'compGain', 0.05, 1.0, 0.01));
+
+        let modKey = get_config_mode(last_modulation);
+        let base = CONFIG[modKey];
+        let currHPF = (override_settings.compHPF !== null && override_settings.compHPF !== undefined) ? override_settings.compHPF : (base.compHPF || 300);
+        let currLPF = (override_settings.compLPF !== null && override_settings.compLPF !== undefined) ? override_settings.compLPF : (base.compLPF || 3000);
+        let currCenter = (currHPF + currLPF) / 2;
+        let currWidth = currLPF - currHPF;
+        let minCenter = 50 + currWidth / 2;
+        let maxCenter = 8000 - currWidth / 2;
+
+        let centerSlider;
+        function applyCompBand(center, width) {
+            currWidth = Math.max(100, Math.min(7500, width));
+            minCenter = 50 + currWidth / 2;
+            maxCenter = 8000 - currWidth / 2;
+            currCenter = Math.max(minCenter, Math.min(maxCenter, center));
+            let newH = currCenter - currWidth / 2;
+            let newL = currCenter + currWidth / 2;
+            override_settings.compHPF = newH;
+            override_settings.compLPF = newL;
+            override_settings.airFreq = newL;
+            if (centerSlider) {
+                centerSlider.setRange(minCenter, maxCenter);
+                centerSlider.setValue(currCenter);
+            }
+            apply_filter_settings();
+        }
+
+        centerSlider = createCustomSlider('Comp Center', minCenter, maxCenter, 50, currCenter, function(val) {
+            applyCompBand(val, currWidth);
+        });
+        menu.appendChild(centerSlider.element);
+
+        const widthSlider = createCustomSlider('Comp Width', 100, 7500, 50, currWidth, function(val) {
+            applyCompBand(currCenter, val);
+        });
+        menu.appendChild(widthSlider.element);
+
+        var btnDef = document.createElement('button');
+        btnDef.textContent = 'Default';
+        btnDef.style.cssText = 'margin-top: 5px; width: 100%; height: 24px; background: #444; color: #fff; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; user-select: none; -webkit-user-select: none;';
+        btnDef.onclick = function() {
+            override_settings.maxBoost = null;
+            override_settings.gateThresh = null;
+            override_settings.hangTime = null;
+            override_settings.recoveryTime = null;
+            override_settings.compGain = null;
+            override_settings.compHPF = null;
+            override_settings.compLPF = null;
+            override_settings.airGain = null;
+            override_settings.airFreq = null;
+            saveSettings();
+            apply_filter_settings();
+            menu.remove();
+            show_comp_menu(rect);
+        };
+        menu.appendChild(btnDef);
+        });
+    }
+
+    function show_dtln_menu(rect) {
+        createFloatingMenu('audio-filter-dtln-menu', 'AI Speech Enhancement (DTLN)', rect, 220, function(menu) {
+
+        const aiDefaults = ai_mode_defaults();
+
+        var info = document.createElement('div');
+        info.style.cssText = 'font-size: 10px; color: #aaa; margin-bottom: 8px;';
+        info.textContent = (dtln.ready && dtln.readyEngine === 'dtln') ? 'Model loaded.' : (dtln.loading ? 'Model loading...' : 'Model will load when enabled.');
+        menu.appendChild(info);
+
+        var val = (override_settings.dtln_gain !== null && override_settings.dtln_gain !== undefined) ? override_settings.dtln_gain : 0;
+
+        var lbl = document.createElement('div');
+        lbl.textContent = 'Output Gain: ' + val.toFixed(1) + ' dB';
+        lbl.style.marginBottom = '2px';
+
+        var inp = document.createElement('input');
+        inp.type = 'range';
+        inp.min = -12;
+        inp.max = 24;
+        inp.step = 0.5;
+        inp.value = val;
+        inp.style.width = '100%';
+
+        inp.oninput = function() {
+            var v = parseFloat(inp.value);
+            lbl.textContent = 'Output Gain: ' + v.toFixed(1) + ' dB';
+            override_settings.dtln_gain = v;
+            apply_filter_settings();
+        };
+        inp.onchange = function() { saveSettings(); };
+
+        menu.appendChild(lbl);
+        menu.appendChild(inp);
+
+        var floorVal = (override_settings.dtln_floor !== null && override_settings.dtln_floor !== undefined) ? override_settings.dtln_floor : aiDefaults.dtlnFloor;
+        var floorLbl = document.createElement('div');
+        floorLbl.textContent = 'Speech Floor: ' + Math.round(floorVal * 100) + '%';
+        floorLbl.style.cssText = 'margin-top: 8px; margin-bottom: 2px;';
+        var floorInp = document.createElement('input');
+        floorInp.type = 'range';
+        floorInp.min = 0;
+        floorInp.max = 0.6;
+        floorInp.step = 0.01;
+        floorInp.value = floorVal;
+        floorInp.style.width = '100%';
+        floorInp.oninput = function() {
+            var v = parseFloat(floorInp.value);
+            floorLbl.textContent = 'Speech Floor: ' + Math.round(v * 100) + '%';
+            override_settings.dtln_floor = v;
+            apply_filter_settings();
+        };
+        floorInp.onchange = function() { saveSettings(); };
+        menu.appendChild(floorLbl);
+        menu.appendChild(floorInp);
+
+        var mixVal = (override_settings.dtln_mix !== null && override_settings.dtln_mix !== undefined) ? override_settings.dtln_mix : aiDefaults.dtlnMix;
+        var mixLbl = document.createElement('div');
+        mixLbl.textContent = 'Intensity (Wet/Dry): ' + Math.round(mixVal * 100) + '%';
+        mixLbl.style.cssText = 'margin-top: 8px; margin-bottom: 2px;';
+        var mixInp = document.createElement('input');
+        mixInp.type = 'range';
+        mixInp.min = 0.2;
+        mixInp.max = 1;
+        mixInp.step = 0.01;
+        mixInp.value = mixVal;
+        mixInp.style.width = '100%';
+        mixInp.oninput = function() {
+            var v = parseFloat(mixInp.value);
+            mixLbl.textContent = 'Intensity (Wet/Dry): ' + Math.round(v * 100) + '%';
+            override_settings.dtln_mix = v;
+            apply_filter_settings();
+        };
+        mixInp.onchange = function() { saveSettings(); };
+        menu.appendChild(mixLbl);
+        menu.appendChild(mixInp);
+
+        var presenceVal = (override_settings.dtln_presence !== null && override_settings.dtln_presence !== undefined) ? override_settings.dtln_presence : 0.3;
+        var presenceLbl = document.createElement('div');
+        presenceLbl.textContent = 'Clarity/Presence: ' + presenceVal.toFixed(2);
+        presenceLbl.style.cssText = 'margin-top: 8px; margin-bottom: 2px;';
+        var presenceInp = document.createElement('input');
+        presenceInp.type = 'range';
+        presenceInp.min = 0;
+        presenceInp.max = get_config_mode(last_modulation) === 'ssb' ? 3.0 : 1.5;
+        presenceInp.step = 0.05;
+        presenceInp.value = presenceVal;
+        presenceInp.style.width = '100%';
+        presenceInp.oninput = function() {
+            var v = parseFloat(presenceInp.value);
+            presenceLbl.textContent = 'Clarity/Presence: ' + v.toFixed(2);
+            override_settings.dtln_presence = v;
+            apply_filter_settings();
+        };
+        presenceInp.onchange = function() { saveSettings(); };
+        menu.appendChild(presenceLbl);
+        menu.appendChild(presenceInp);
+
+        var btnDef = document.createElement('button');
+        btnDef.textContent = 'Default';
+        btnDef.style.cssText = 'margin-top: 10px; width: 100%; height: 24px; background: #444; color: #fff; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; user-select: none; -webkit-user-select: none;';
+        btnDef.onclick = function() {
+            override_settings.dtln_gain = null;
+            override_settings.dtln_floor = null;
+            override_settings.dtln_presence = null;
+            override_settings.dtln_mix = null;
+            saveSettings();
+            apply_filter_settings();
+            menu.remove();
+            show_dtln_menu(rect);
+        };
+        menu.appendChild(btnDef);
+        });
+    }
+
+    function show_rnnoise_menu(rect) {
+        createFloatingMenu('audio-filter-rnnoise-menu', 'AI Speech Enhancement (RNNoise)', rect, 220, function(menu) {
+
+        const aiDefaults = ai_mode_defaults();
+
+        var info = document.createElement('div');
+        info.style.cssText = 'font-size: 10px; color: #aaa; margin-bottom: 8px;';
+        info.textContent = (dtln.ready && dtln.readyEngine === 'rnnoise') ? 'Model loaded.' : (dtln.loading ? 'Model loading...' : 'Model will load when enabled.');
+        menu.appendChild(info);
+
+        var val = (override_settings.dtln_gain !== null && override_settings.dtln_gain !== undefined) ? override_settings.dtln_gain : 0;
+
+        var lbl = document.createElement('div');
+        lbl.textContent = 'Output Gain: ' + val.toFixed(1) + ' dB';
+        lbl.style.marginBottom = '2px';
+
+        var inp = document.createElement('input');
+        inp.type = 'range';
+        inp.min = -12;
+        inp.max = 24;
+        inp.step = 0.5;
+        inp.value = val;
+        inp.style.width = '100%';
+
+        inp.oninput = function() {
+            var v = parseFloat(inp.value);
+            lbl.textContent = 'Output Gain: ' + v.toFixed(1) + ' dB';
+            override_settings.dtln_gain = v;
+            apply_filter_settings();
+        };
+        inp.onchange = function() { saveSettings(); };
+
+        menu.appendChild(lbl);
+        menu.appendChild(inp);
+
+        function addRnSlider(label, key, min, max, step, defVal, fmt) {
+            var v = (override_settings[key] !== null && override_settings[key] !== undefined) ? override_settings[key] : defVal;
+            var l = document.createElement('div');
+            l.textContent = label + ': ' + fmt(v);
+            l.style.cssText = 'margin-top: 8px; margin-bottom: 2px;';
+            var s = document.createElement('input');
+            s.type = 'range';
+            s.min = min;
+            s.max = max;
+            s.step = step;
+            s.value = v;
+            s.style.width = '100%';
+            s.oninput = function() {
+                var x = parseFloat(s.value);
+                l.textContent = label + ': ' + fmt(x);
+                override_settings[key] = x;
+                apply_filter_settings();
+            };
+            s.onchange = function() { saveSettings(); };
+            menu.appendChild(l);
+            menu.appendChild(s);
+        }
+
+        addRnSlider('Speech Level', 'rn_target', 0.1, 1.0, 0.05, aiDefaults.rnTarget, function(v) { return Math.round(v * 100) + '%'; });
+        addRnSlider('Max Boost', 'rn_boost', 6, 80, 1, aiDefaults.rnBoost, function(v) { return Math.round(20 * Math.log10(v)) + ' dB'; });
+        addRnSlider('Speech Preserve', 'rn_mix', 0.3, 1.0, 0.05, aiDefaults.rnMix, function(v) { return Math.round((1 - v) * 100) + '%'; });
+
+        var btnDef = document.createElement('button');
+        btnDef.textContent = 'Default';
+        btnDef.style.cssText = 'margin-top: 10px; width: 100%; height: 24px; background: #444; color: #fff; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; user-select: none; -webkit-user-select: none;';
+        btnDef.onclick = function() {
+            override_settings.dtln_gain = null;
+            override_settings.rn_target = null;
+            override_settings.rn_boost = null;
+            override_settings.rn_mix = null;
+            saveSettings();
+            apply_filter_settings();
+            menu.remove();
+            show_rnnoise_menu(rect);
+        };
+        menu.appendChild(btnDef);
+        });
+    }
+
+    function show_settings_menu(rect) {
+        createFloatingMenu('audio-filter-settings-menu', 'Plugin Settings', rect, 150, function(menu) {
+
+        function build_export_settings() {
+            var modes = {};
+            Object.keys(CONFIG).forEach(function (mode) {
+                modes[mode] = {};
+                SETTING_KEYS.forEach(function (key) {
+                    var override = settings_store[mode] && settings_store[mode][key];
+                    modes[mode][key] = override !== null && override !== undefined ?
+                        override : (Object.prototype.hasOwnProperty.call(CONFIG[mode], key) ? CONFIG[mode][key] : null);
+                });
+            });
+
+            return {
+                version: 2,
+                modes: modes,
+                enabled: {
+                    equalizer: is_filter_enabled,
+                    noiseReduction: is_nr_enabled,
+                    noiseBlanker: is_nb_enabled,
+                    humFilter: is_hum_filter_enabled,
+                    compressor: is_compressor_enabled,
+                    speechExpander: is_expander_enabled,
+                    outputLimiter: is_limiter_enabled,
+                    autoNotch: is_autonotch_enabled,
+                    loudness: is_loudness_enabled,
+                    aiSpeechEnhancement: is_dtln_enabled,
+                    aiEngine: is_dtln_enabled ? dtln.engine : 'none'
+                },
+                visualization: {
+                    graph: localStorage.getItem('openwebrx-audio-filter-show-graph') === 'true',
+                    inputSpectrum: show_input_spectrum,
+                    outputSpectrum: show_output_spectrum
+                }
+            };
+        }
+
+        var btnExport = document.createElement('button');
+        btnExport.textContent = 'Export Settings';
+        btnExport.style.cssText = 'width: 100%; margin-bottom: 5px; height: 24px; background: #444; color: #fff; border: none; border-radius: 3px; cursor: pointer; user-select: none; -webkit-user-select: none;';
+        btnExport.onclick = function() {
+            var dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(build_export_settings(), null, 2));
+            var downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "audio_filter_settings.json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+            menu.remove();
+        };
+        menu.appendChild(btnExport);
+
+        var btnImport = document.createElement('button');
+        btnImport.textContent = 'Import Settings';
+        btnImport.style.cssText = 'width: 100%; height: 24px; background: #444; color: #fff; border: none; border-radius: 3px; cursor: pointer; user-select: none; -webkit-user-select: none;';
+        btnImport.onclick = function() {
+            var input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.json';
+            input.onchange = function(e) {
+                var file = e.target.files[0];
+                if (!file) return;
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        var s = JSON.parse(e.target.result);
+                        var importedModes = s && s.modes ? s.modes : s;
+                        if (importedModes && (importedModes.ssb || importedModes.am)) {
+                            settings_store = Object.assign({
+                                ssb: create_empty_settings(),
+                                am: create_empty_settings(),
+                                cw: create_empty_settings(),
+                                nfm: create_empty_settings(),
+                                wfm: create_empty_settings(),
+                                digital: create_empty_settings()
+                            }, importedModes);
+                            localStorage.setItem('openwebrx-audio-filter-settings', JSON.stringify(settings_store));
+
+                            if (s.enabled) {
+                                is_filter_enabled = !!s.enabled.equalizer;
+                                is_nr_enabled = !!s.enabled.noiseReduction;
+                                is_nb_enabled = !!s.enabled.noiseBlanker;
+                                is_hum_filter_enabled = !!s.enabled.humFilter;
+                                is_compressor_enabled = !!s.enabled.compressor;
+                                is_expander_enabled = !!s.enabled.speechExpander;
+                                is_limiter_enabled = !!s.enabled.outputLimiter;
+                                is_autonotch_enabled = !!s.enabled.autoNotch;
+                                is_loudness_enabled = !!s.enabled.loudness;
+                                is_dtln_enabled = !!s.enabled.aiSpeechEnhancement;
+                                dtln.engine = (s.enabled.aiEngine && s.enabled.aiEngine !== 'none') ? s.enabled.aiEngine : 'dtln';
+                                if (dtln.engine === 'df') dtln.engine = 'dtln';
+                                dtln.enabled = is_dtln_enabled;
+                                localStorage.setItem('openwebrx-audio-filter-enabled', is_filter_enabled);
+                                localStorage.setItem('openwebrx-audio-filter-nr', is_nr_enabled);
+                                localStorage.setItem('openwebrx-audio-filter-declick', is_nb_enabled);
+                                localStorage.setItem('openwebrx-audio-filter-hum', is_hum_filter_enabled);
+                                localStorage.setItem('openwebrx-audio-filter-compressor', is_compressor_enabled);
+                                localStorage.setItem('openwebrx-audio-filter-expander', is_expander_enabled);
+                                localStorage.setItem('openwebrx-audio-filter-limiter', is_limiter_enabled);
+                                localStorage.setItem('openwebrx-audio-filter-autonotch', is_autonotch_enabled);
+                                localStorage.setItem('openwebrx-audio-filter-loudness', is_loudness_enabled);
+                                localStorage.setItem('openwebrx-audio-filter-ai-engine', is_dtln_enabled ? dtln.engine : 'none');
+                                if (is_dtln_enabled) {
+                                    dtln_reset_runtime();
+                                    ai_ensure_loaded();
+                                }
+                            }
+                            if (s.visualization) {
+                                show_input_spectrum = !!s.visualization.inputSpectrum;
+                                show_output_spectrum = !!s.visualization.outputSpectrum;
+                                localStorage.setItem('openwebrx-audio-filter-show-graph', !!s.visualization.graph);
+                                localStorage.setItem('openwebrx-audio-filter-show-in-spec', show_input_spectrum);
+                                localStorage.setItem('openwebrx-audio-filter-show-out-spec', show_output_spectrum);
+                            }
+                            // Apply current
+                            let modKey = get_config_mode(last_modulation);
+                            if (settings_store[modKey]) {
+                                override_settings = JSON.parse(JSON.stringify(settings_store[modKey]));
+                            }
+                            apply_filter_settings();
+                            update_fil_button_state();
+                        } else {
+                            alert('Invalid settings file.');
+                        }
+                    } catch(err) {
+                        console.error(`[${PLUGIN_ID}] Error importing settings:`, err);
+                        alert('Error importing settings: ' + err.message);
+                    }
+                };
+                reader.readAsText(file);
+            };
+            input.click();
+            menu.remove();
+        };
+        menu.appendChild(btnImport);
+        });
+    }
+
+    function show_notch_menu(rect) {
+        createFloatingMenu('audio-filter-notch-menu', 'Notch Settings', rect, 200, function(menu) {
+
+        function createSlider(label, key, min, max, step) {
+            var container = document.createElement('div');
+            container.style.marginBottom = '8px';
+
+            var defVal = CONFIG[get_config_mode(last_modulation)][key];
+            if (defVal === undefined) {
+                if (key === 'maxNotches') defVal = 4;
+                else if (key === 'notchRange') defVal = 4000;
+                else if (key === 'notchCenter') {
+                    let nr = (override_settings.notchRange !== null && override_settings.notchRange !== undefined) ? override_settings.notchRange : 4000;
+                    defVal = nr / 2;
+                }
+                else defVal = 30;
+            }
+
+            var val = (override_settings[key] !== null && override_settings[key] !== undefined) ? override_settings[key] : defVal;
+
+            var lbl = document.createElement('div');
+            lbl.textContent = label + ': ' + val;
+            lbl.style.marginBottom = '2px';
+
+            var inp = document.createElement('input');
+            inp.type = 'range';
+            inp.min = min;
+            inp.max = max;
+            inp.step = step;
+            inp.value = val;
+            inp.style.width = '100%';
+
+            inp.oninput = function() {
+                var v = parseFloat(inp.value);
+                lbl.textContent = label + ': ' + v;
+                override_settings[key] = v;
+                apply_filter_settings();
+            };
+
+            inp.onchange = function() {
+                saveSettings();
+            };
+
+            container.appendChild(lbl);
+            container.appendChild(inp);
+            return container;
+        }
+
+        menu.appendChild(createSlider('Notch Q (Sharpness)', 'notchQ', 1, 50, 1));
+        menu.appendChild(createSlider('Max Notches', 'maxNotches', 1, 4, 1));
+        menu.appendChild(createSlider('Detection Center (Hz)', 'notchCenter', 250, 8000, 50));
+        menu.appendChild(createSlider('Detection Width (Hz)', 'notchRange', 500, 8000, 100));
+
+        var btnDef = document.createElement('button');
+        btnDef.textContent = 'Default';
+        btnDef.style.cssText = 'margin-top: 5px; width: 100%; height: 24px; background: #444; color: #fff; border: none; border-radius: 3px; cursor: pointer; font-size: 11px; user-select: none; -webkit-user-select: none;';
+        btnDef.onclick = function() {
+            override_settings.notchQ = null;
+            override_settings.maxNotches = null;
+            override_settings.notchRange = null;
+            override_settings.notchCenter = null;
+            saveSettings();
+            menu.remove();
+            show_notch_menu(rect);
+            apply_filter_settings();
+        };
+        menu.appendChild(btnDef);
+        });
+    }
+
+    function show_nr_menu(rect) {
+        createFloatingMenu('audio-filter-nr-menu', 'Spectral Noise Reduction', rect, 200, function(menu) {
+
+        function createSlider(label, key, min, max, step, scale) {
+            var container = document.createElement('div');
+            container.style.marginBottom = '8px';
+
+            var defVal = CONFIG[get_config_mode(last_modulation)][key];
+            if (defVal === undefined) {
+                if (key === 'nr_gain') defVal = 0;
+                else if (key === 'nr_alpha') defVal = 0.95;
+                else if (key === 'nr_snr') defVal = 10;
+                else if (key === 'nr_comb') defVal = 0.5;
+            }
+            var val = (override_settings[key] !== null && override_settings[key] !== undefined) ? override_settings[key] : defVal;
+
+            var lbl = document.createElement('div');
+            lbl.textContent = label + ': ' + (val * (scale || 1)).toFixed(scale ? 0 : 4);
+            lbl.style.marginBottom = '2px';
+
+            var inp = document.createElement('input');
+            inp.type = 'range';
+            inp.min = min;
+            inp.max = max;
+            inp.step = step;
+            inp.value = val;
+            inp.style.width = '100%';
+
+            inp.oninput = function() {
+                var v = parseFloat(inp.value);
+                lbl.textContent = label + ': ' + (v * (scale || 1)).toFixed(scale ? 0 : 4);
+                override_settings[key] = v;
+                apply_filter_settings();
+            };
+            inp.onchange = function() { saveSettings(); };
+
+            container.appendChild(lbl);
+            container.appendChild(inp);
+            return container;
+        }
+
+        menu.appendChild(createSlider('Gain (dB)', 'nr_gain', -60, 60, 1, 1));
+        menu.appendChild(createSlider('Alpha (Smooth)', 'nr_alpha', 0.90, 0.9999, 0.0001));
+        menu.appendChild(createSlider('Active SNR (dB)', 'nr_snr', -10, 40, 1, 1));
+
+        menu.appendChild(createSlider('Comb Strength', 'nr_comb', 0.0, 1.0, 0.05));
+
+        var speechDiv = document.createElement('div');
+        speechDiv.style.marginTop = '10px';
+        speechDiv.style.borderTop = '1px solid #444';
+        speechDiv.style.paddingTop = '5px';
+
+        var speechLbl = document.createElement('label');
+        speechLbl.style.display = 'flex';
+        speechLbl.style.alignItems = 'center';
+        speechLbl.style.cursor = 'pointer';
+
+        var speechChk = document.createElement('input');
+        speechChk.type = 'checkbox';
+
+        let modKey = get_config_mode(last_modulation);
+        let base = CONFIG[modKey];
+        speechChk.checked = (override_settings.nr_speech_mode !== null && override_settings.nr_speech_mode !== undefined) ? override_settings.nr_speech_mode : (base.nr_speech_mode !== undefined ? base.nr_speech_mode : false);
+
+        speechChk.style.marginRight = '8px';
+        speechChk.onchange = function() {
+            override_settings.nr_speech_mode = speechChk.checked;
+            apply_filter_settings();
+            saveSettings();
+        };
+
+        speechLbl.appendChild(speechChk);
+        speechLbl.appendChild(document.createTextNode('Speech Mode (Fast Adapt)'));
+        speechDiv.appendChild(speechLbl);
+        menu.appendChild(speechDiv);
+        });
+    }
+
+    function update_fil_button_state() {
+        var win = document.getElementById('plugin-window-' + PLUGIN_ID);
+        var fallbackPanel = document.getElementById('audio-filter-floating-panel');
+        var isVisible = false;
+        if (win) {
+            isVisible = (typeof $ !== 'undefined') ? $(win).is(':visible') : (win.style.display !== 'none');
+        } else if (fallbackPanel) {
+            isVisible = fallbackPanel.style.display !== 'none';
+        }
+
+        var active = is_filter_enabled || is_autonotch_enabled || is_nb_enabled || is_hum_filter_enabled || is_compressor_enabled || is_expander_enabled || is_limiter_enabled || is_nr_enabled || is_dtln_enabled;
+
+        var extBtn = document.getElementById('plugin-button-' + PLUGIN_ID);
+        if (extBtn) {
+            extBtn.style.color = active? '#39FF14' : '';
+        }
+
+        var btn = document.getElementById('audio-filter-toggle-btn');
+        if (btn) {
+            if (isVisible) {
+                btn.style.color = '#39FF14';
+                btn.style.borderColor = '#39FF14';
+            } else if (active) {
+                btn.style.color = 'yellow';
+                btn.style.borderColor = 'yellow';
+            } else {
+                btn.style.color = '#aaa';
+                btn.style.borderColor = '#666';
+            }
+        }
+    }
+
+})();
